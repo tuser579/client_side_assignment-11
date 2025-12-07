@@ -7,10 +7,10 @@ const Reviews = ({ reviewsPromise }) => {
     const reviews = use(reviewsPromise);
     console.log(reviews);
     return (
-        <div className='my-24'>
-            <div className='text-center mb-24'>
+        <div className='mx-10 mb-10'>
+            <div className='text-center mr-7 mb-10'>
                 <h3 className="text-3xl text-center font-bold my-8">Review</h3>
-                <p>Lorem, ipsum dolor sit amet consectetur adipisicing elit. Non soluta, perspiciatis esse eius praesentium similique asperiores quasi veniam repellat architecto repellendus, deserunt accusantium, debitis ipsa. Expedita possimus facilis voluptas deserunt.</p>
+                <p>Our Public Infrastructure Issue Reporting System provides a modern digital solution for citizens to report and track real-world infrastructure problems efficiently. By bridging the gap between community concerns and municipal services, we enable faster response times, transparent tracking, and collaborative problem-solving that transforms urban living experiences.</p>
             </div>
 
             <Swiper

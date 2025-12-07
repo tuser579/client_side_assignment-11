@@ -90,7 +90,7 @@ const Banner = () => {
     };
 
     return (
-        <section className="relative h-[35.5rem]">
+        <section className="relative h-142">
             <AnimatePresence mode="wait">
                 <motion.div
                     key={currentSlide}
