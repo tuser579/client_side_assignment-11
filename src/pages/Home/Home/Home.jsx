@@ -6,17 +6,15 @@ import LatestResolvedIssue from '../LatestResolvedIssue/LatestResolvedIssue';
 import Features from '../Features/Features';
 import HowItWorks from '../HowItWorks/HowItWorks';
 
-const reviewsPromise = fetch('/reviews.json').then(res => res.json());
 
 const Home = () => {
     return (
         <div>
             <Banner></Banner>
-            {/* <Brands></Brands> */}
             <LatestResolvedIssue></LatestResolvedIssue>
             <Features></Features>
             <HowItWorks></HowItWorks>
-            <Reviews reviewsPromise={reviewsPromise}></Reviews>
+            <Reviews></Reviews>
         </div>
     );
 };

@@ -1,0 +1,5 @@
+.menu a.active {
+    border-bottom: 2px solid rgba(52, 152, 219, 1);
+    border-radius: 0px;
+    color: rgba(52, 152, 219, 1);
+}

@@ -1,11 +1,25 @@
-import React, { use } from 'react';
+import React from 'react';
 import { Autoplay, EffectCoverflow, Pagination } from 'swiper/modules';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import ReviewCard from './ReviewCard';
+import useAxiosSecure from '../../../hooks/useAxiosSecure';
+import { useQuery } from '@tanstack/react-query';
 
-const Reviews = ({ reviewsPromise }) => {
-    const reviews = use(reviewsPromise);
-    console.log(reviews);
+const Reviews = () => {
+
+    const axiosSecure = useAxiosSecure();
+
+    const {
+        data: reviews = [],   
+    } = useQuery({
+        queryKey: ['getReview'],
+        queryFn: async () => {
+            const res = await axiosSecure.get(`/getReview`);
+            return res.data;
+        }
+    });
+
+
     return (
         <div className='mx-10 mb-10'>
             <div className='text-center mr-7 mb-10'>

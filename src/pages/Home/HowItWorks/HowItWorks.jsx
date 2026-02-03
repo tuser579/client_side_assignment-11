@@ -240,32 +240,6 @@ const HowItWorks = () => {
                     </div>
                 </motion.div>
 
-                {/* CTA Section */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: 0.5 }}
-                    viewport={{ once: true }}
-                    className="mt-16 text-center"
-                >
-                    <div className="bg-linear-to-r from-blue-50 to-purple-50 rounded-2xl p-8 border border-blue-200">
-                        <h3 className="text-2xl font-bold text-gray-900 mb-4">
-                            Ready to Report Your First Issue?
-                        </h3>
-                        <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
-                            Join our community of active citizens and help improve public infrastructure in your area.
-                        </p>
-                        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                            <button className="px-8 py-3 bg-linear-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl font-semibold">
-                                Start Reporting Now
-                            </button>
-                            <button className="px-8 py-3 bg-white border-2 border-blue-600 text-blue-600 rounded-xl hover:bg-blue-50 transition-all duration-300 transform hover:scale-105 font-semibold">
-                                Watch Demo Video
-                            </button>
-                        </div>
-                    </div>
-                </motion.div>
-
                 {/* Visual Timeline for Mobile */}
                 <motion.div
                     initial={{ opacity: 0 }}
