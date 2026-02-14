@@ -28,7 +28,8 @@ import {
     HiOutlineChevronLeft,
     HiOutlineChevronRight,
     HiOutlineChevronDoubleLeft,
-    HiOutlineChevronDoubleRight
+    HiOutlineChevronDoubleRight,
+    HiOutlineCog
 } from 'react-icons/hi';
 import { AlertCircle } from 'lucide-react';
 
@@ -185,7 +186,12 @@ const AllIssue = () => {
             'In-Progress': {
                 color: 'bg-linear-to-r from-blue-500 to-cyan-500',
                 icon: <HiOutlineClock className="w-4 h-4" />,
-                text: 'In Progress'
+                text: 'In-Progress'
+            },
+            'Working': {
+                color: 'bg-linear-to-r from-purple-500 to-indigo-500',
+                icon: <HiOutlineCog className="w-4 h-4" />,
+                text: 'Working'
             },
             'Resolved': {
                 color: 'bg-linear-to-r from-green-500 to-emerald-500',
@@ -196,6 +202,11 @@ const AllIssue = () => {
                 color: 'bg-linear-to-r from-gray-500 to-gray-600',
                 icon: <HiOutlineXCircle className="w-4 h-4" />,
                 text: 'Closed'
+            },
+            'Rejected': {
+                color: 'bg-linear-to-r from-red-500 to-pink-500',
+                icon: <HiOutlineXCircle className="w-4 h-4" />,
+                text: 'Rejected'
             }
         };
         return configs[status] || configs.Pending;
@@ -221,25 +232,20 @@ const AllIssue = () => {
     // Get category icon
     const getCategoryIcon = (category) => {
         const icons = {
-            'streetlight': '💡',
-            'water': '💧',
-            'road_damage': '🛣️',
-            'garbage': '🗑️',
-            'footpath': '🚶',
-            'drainage': '🌊',
-            'traffic': '🚦',
-            'parks': '🌳',
-            'public_toilet': '🚻',
-            'noise': '🔇',
+            'Streetlight': '💡',
+            'Road_Damage': '🛣️',
+            'Garbage': '🗑️',
+            'Footpath': '🚶',
+            'Drainage': '🌊',
+            'Traffic': '🚦',
+            'Parks': '🌳',
+            'Public_Toilet': '🚻',
+            'Noise': '🔇',
             'Electricity': '💡',
-            'Road Maintenance': '🛣️',
-            'Water Supply': '💧',
+            'Water_Supply': '💧',
             'Sanitation': '🗑️',
             'Infrastructure': '🏗️',
-            'Traffic Control': '🚦',
-            'Drainage': '🌊',
-            'Public Amenities': '🏛️',
-            'other': '❓'
+            'Other': '❓'
         };
         return icons[category] || '📋';
     };
@@ -317,13 +323,19 @@ const AllIssue = () => {
         // Default images based on category
         const defaultImages = {
             'Electricity': 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-            'Road Maintenance': 'https://images.unsplash.com/photo-1542223616-740d5dff7f56?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-            'Water Supply': 'https://images.unsplash.com/photo-1621452773781-0f992fd1f5c0?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+            'Water_Supply': 'https://images.unsplash.com/photo-1621452773781-0f992fd1f5c0?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+            'Road_Damage': 'https://images.unsplash.com/photo-1542223616-740d5dff7f56?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
             'Sanitation': 'https://images.unsplash.com/photo-1578558288136-7207e7747ba6?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
             'Infrastructure': 'https://images.unsplash.com/photo-1544457070-4cd773b4d71e?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-            'Traffic Control': 'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-            'Drainage': 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-            'Public Amenities': 'https://images.unsplash.com/photo-1517799094725-e3453440724e?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+            'Streetlight': 'https://images.unsplash.com/photo-1517322048670-4fba75cbbb62?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+            'Garbage': 'https://images.unsplash.com/photo-1578558288136-7207e7747ba6?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+            'Footpath': 'https://images.unsplash.com/photo-1542223616-740d5dff7f56?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+            'Drainage': 'https://images.unsplash.com/photo-1621452773781-0f992fd1f5c0?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+            'Traffic': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+            'Parks': 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+            'Public_Toilet': 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+            'Noise': 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+            'Other': 'https://images.unsplash.com/photo-1541746972996-4e0b0f43e02a?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
             'default': 'https://images.unsplash.com/photo-1541746972996-4e0b0f43e02a?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80'
         };
 
@@ -488,28 +500,67 @@ const AllIssue = () => {
                     </div>
 
                     {/* Stats Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
+                        {/* Total Issues */}
                         <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-200">
-                            <div className="text-2xl font-bold text-blue-600">{allIssues.length}</div>
-                            <div className="text-sm text-gray-600">Total Issues</div>
+                            <div className="text-xl font-bold text-blue-600">{allIssues.length}</div>
+                            <div className="text-xs text-gray-600">Total Issues</div>
                         </div>
+
+                        {/* Pending Issues */}
                         <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-200">
-                            <div className="text-2xl font-bold text-orange-600">
+                            <div className="text-xl font-bold text-yellow-600">
                                 {allIssues.filter(i => i.status === 'Pending').length}
                             </div>
-                            <div className="text-sm text-gray-600">Pending</div>
+                            <div className="text-xs text-gray-600">Pending</div>
                         </div>
+
+                        {/* In-Progress Issues */}
                         <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-200">
-                            <div className="text-2xl font-bold text-green-600">
+                            <div className="text-xl font-bold text-blue-500">
+                                {allIssues.filter(i => i.status === 'In-Progress').length}
+                            </div>
+                            <div className="text-xs text-gray-600">In-Progress</div>
+                        </div>
+
+                        {/* Working Issues */}
+                        <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-200">
+                            <div className="text-xl font-bold text-purple-600">
+                                {allIssues.filter(i => i.status === 'Working').length}
+                            </div>
+                            <div className="text-xs text-gray-600">Working</div>
+                        </div>
+
+                        {/* Resolved Issues */}
+                        <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-200">
+                            <div className="text-xl font-bold text-green-600">
                                 {allIssues.filter(i => i.status === 'Resolved').length}
                             </div>
-                            <div className="text-sm text-gray-600">Resolved</div>
+                            <div className="text-xs text-gray-600">Resolved</div>
                         </div>
+
+                        {/* Closed Issues */}
                         <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-200">
-                            <div className="text-2xl font-bold text-purple-600">
+                            <div className="text-xl font-bold text-gray-600">
+                                {allIssues.filter(i => i.status === 'Closed').length}
+                            </div>
+                            <div className="text-xs text-gray-600">Closed</div>
+                        </div>
+
+                        {/* Rejected Issues */}
+                        <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-200">
+                            <div className="text-xl font-bold text-red-600">
+                                {allIssues.filter(i => i.status === 'Rejected').length}
+                            </div>
+                            <div className="text-xs text-gray-600">Rejected</div>
+                        </div>
+
+                        {/* Boosted Issues */}
+                        <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-200">
+                            <div className="text-xl font-bold text-pink-600">
                                 {allIssues.filter(i => i.isBoosted).length}
                             </div>
-                            <div className="text-sm text-gray-600">Boosted</div>
+                            <div className="text-xs text-gray-600">Boosted</div>
                         </div>
                     </div>
                 </div>
@@ -592,9 +643,11 @@ const AllIssue = () => {
                             >
                                 <option value="all">All Statuses</option>
                                 <option value="Pending">⏳ Pending</option>
-                                <option value="In-Progress">🚧 In Progress</option>
+                                <option value="In-Progress">🚧 In-Progress</option>
+                                <option value="Working">🛠️ Working</option>
                                 <option value="Resolved">✅ Resolved</option>
                                 <option value="Closed">🔒 Closed</option>
+                                <option value="Rejected">❌ Rejected</option>
                             </select>
                         </div>
 

@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router";
 
 const axiosSecure = axios.create({
-  baseURL: 'http://localhost:3999',
+  baseURL: 'https://cityfix-server.vercel.app',
 });
 
 const useAxiosSecure = () => {

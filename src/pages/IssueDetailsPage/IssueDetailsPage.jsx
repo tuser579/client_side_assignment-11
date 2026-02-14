@@ -24,7 +24,10 @@ import {
     HiOutlineChatAlt,
     HiOutlineThumbUp,
     HiOutlineShare,
-    HiOutlineX
+    HiOutlineX,
+    HiOutlineCog,
+    HiOutlineRefresh,
+    HiOutlineLockClosed
 } from 'react-icons/hi';
 import {
     AlertCircle,
@@ -80,16 +83,6 @@ const IssueDetailsPage = () => {
         enabled: !!user?.email,
         queryFn: async () => {
             const response = await axiosSecure.get(`/singleUser/${user?.email}`);
-            return response.data;
-        }
-    });
-
-    // Fetch assigned staff info if available
-    const { data: assignedStaff = {} } = useQuery({
-        queryKey: ['assignedStaff', issue?.assignedTo],
-        enabled: !!issue?.assignedTo,
-        queryFn: async () => {
-            const response = await axiosSecure.get(`/staff/${issue?.assignedTo}`);
             return response.data;
         }
     });
@@ -425,7 +418,23 @@ const IssueDetailsPage = () => {
 
         try {
             const res = await axiosSecure.post('/create-checkout-session', paymentInfo);
-            console.log(res.data);
+            if (res.data) {
+                // Create timeline entry
+                const timelineEntry = {
+                    action: 'Boost_Issue',
+                    timestamp: new Date(),
+                    by: user?.email || 'User',
+                    note: `Boosted issue by user`
+                };
+
+                // Update issue status
+                const updateData = {
+                    updatedAt: new Date(),
+                    timelineEntry: [...issue.timelineEntry, timelineEntry]
+                };
+
+                axiosSecure.patch(`/myIssueUpdate/${issue._id}`, updateData);
+            }
 
             Swal.fire({
                 icon: 'success',
@@ -438,7 +447,7 @@ const IssueDetailsPage = () => {
             // Add a small delay to allow user to see the success message
             setTimeout(() => {
                 window.location.assign(res.data.url);
-            }, 1500);
+            }, 500);
         } catch (error) {
             console.error('Payment error:', error);
 
@@ -458,7 +467,7 @@ const IssueDetailsPage = () => {
             toast.error('Your account in blocked. You cannot upvote this issue.');
             return;
         }
-        
+
         // Check if user is trying to upvote their own issue
         if (issue?.reportedByEmail === user.email) {
             toast.error('You cannot upvote your own issue');
@@ -485,7 +494,7 @@ const IssueDetailsPage = () => {
         } catch (error) {
             toast.error('Failed to upvote. Please try again.');
             console.error('Upvote error:', error);
-        } 
+        }
     };
 
 
@@ -499,9 +508,16 @@ const IssueDetailsPage = () => {
                 bg: 'bg-orange-50',
                 textColor: 'text-orange-700'
             },
+            'Working': {
+                color: 'bg-purple-500',
+                icon: <HiOutlineCog className="w-4 h-4" />, // Changed to Cog (gear icon)
+                text: 'Working',
+                bg: 'bg-purple-50',
+                textColor: 'text-purple-700'
+            },
             'In-Progress': {
                 color: 'bg-blue-500',
-                icon: <HiOutlineClock className="w-4 h-4" />,
+                icon: <HiOutlineRefresh className="w-4 h-4" />, // Changed to Refresh for distinction
                 text: 'In Progress',
                 bg: 'bg-blue-50',
                 textColor: 'text-blue-700'
@@ -515,10 +531,17 @@ const IssueDetailsPage = () => {
             },
             'Closed': {
                 color: 'bg-gray-500',
-                icon: <HiOutlineXCircle className="w-4 h-4" />,
+                icon: <HiOutlineLockClosed className="w-4 h-4" />, // Changed to LockClosed
                 text: 'Closed',
                 bg: 'bg-gray-50',
                 textColor: 'text-gray-700'
+            },
+            'Rejected': {
+                color: 'bg-red-500',
+                icon: <HiOutlineXCircle className="w-4 h-4" />, // Using XCircle
+                text: 'Rejected',
+                bg: 'bg-red-50',
+                textColor: 'text-red-700'
             }
         };
         return configs[status] || configs.Pending;
@@ -548,23 +571,21 @@ const IssueDetailsPage = () => {
     // Get category config
     const getCategoryConfig = (category) => {
         const categories = {
-            'road_damage': { icon: '🛣️', name: 'Road Damage' },
-            'streetlight': { icon: '💡', name: 'Street Light' },
-            'water': { icon: '💧', name: 'Water Supply' },
-            'garbage': { icon: '🗑️', name: 'Garbage' },
-            'footpath': { icon: '🚶', name: 'Footpath' },
-            'drainage': { icon: '🌊', name: 'Drainage' },
-            'traffic': { icon: '🚦', name: 'Traffic' },
-            'parks': { icon: '🌳', name: 'Parks' },
-            'public_toilet': { icon: '🚻', name: 'Public Toilet' },
-            'noise': { icon: '🔇', name: 'Noise' },
-            'Electricity': { icon: '⚡', name: 'Electricity' },
-            'Road Maintenance': { icon: '🛠️', name: 'Road Maintenance' },
-            'Water Supply': { icon: '🚰', name: 'Water Supply' },
-            'Sanitation': { icon: '🧹', name: 'Sanitation' },
+            'Road_Damage': { icon: '🛣️', name: 'Road Damage' },
+            'Streetlight': { icon: '💡', name: 'Street Light' },
+            'Water': { icon: '💧', name: 'Water Supply' },
+            'Garbage': { icon: '🗑️', name: 'Garbage' },
+            'Footpath': { icon: '🚶', name: 'Footpath' },
+            'Drainage': { icon: '🌊', name: 'Drainage' },
+            'Traffic': { icon: '🚦', name: 'Traffic' },
+            'Parks': { icon: '🌳', name: 'Parks' },
+            'Public_Toilet': { icon: '🚻', name: 'Public Toilet' },
+            'Noise': { icon: '🔇', name: 'Noise' },
+            'Electricity': { icon: '💡', name: 'Electricity' },
+            'Water_Supply': { icon: '💧', name: 'Water Supply' },
+            'Sanitation': { icon: '🗑️', name: 'Sanitation' },
             'Infrastructure': { icon: '🏗️', name: 'Infrastructure' },
-            'Traffic Control': { icon: '🚗', name: 'Traffic Control' },
-            'Public Amenities': { icon: '🏛️', name: 'Public Amenities' }
+            'Other': { icon: '❓', name: 'Other' }
         };
         return categories[category] || { icon: '📋', name: category || 'Other' };
     };
@@ -608,13 +629,11 @@ const IssueDetailsPage = () => {
     // Get timeline icon
     const getTimelineIcon = (type) => {
         const icons = {
-            'created': <HiOutlineDocumentText className="w-5 h-5" />,
-            'assigned': <HiOutlineUsers className="w-5 h-5" />,
-            'status_change': <HiOutlineClock className="w-5 h-5" />,
-            'boosted': <HiOutlineLightningBolt className="w-5 h-5" />,
-            'comment': <HiOutlineChatAlt className="w-5 h-5" />,
-            'resolved': <HiOutlineCheckCircle className="w-5 h-5" />,
-            'closed': <HiOutlineXCircle className="w-5 h-5" />
+            'Issue_Reported': <HiOutlineDocumentText className="w-5 h-5" />,
+            'Staff_Assigned': <HiOutlineUsers className="w-5 h-5" />,
+            'Status_Changed': <HiOutlineClock className="w-5 h-5" />,
+            'Boost_Issue': <HiOutlineLightningBolt className="w-5 h-5" />,
+            'Rejected': <HiOutlineXCircle className="w-5 h-5" />
         };
         return icons[type] || <HiOutlineClock className="w-5 h-5" />;
     };
@@ -622,13 +641,11 @@ const IssueDetailsPage = () => {
     // Get timeline color
     const getTimelineColor = (type) => {
         const colors = {
-            'created': 'bg-blue-100 text-blue-600',
-            'assigned': 'bg-purple-100 text-purple-600',
-            'status_change': 'bg-yellow-100 text-yellow-600',
-            'boosted': 'bg-orange-100 text-orange-600',
-            'comment': 'bg-gray-100 text-gray-600',
-            'resolved': 'bg-green-100 text-green-600',
-            'closed': 'bg-red-100 text-red-600'
+            'Issue_Reported': 'bg-blue-100 text-blue-600',
+            'Staff_Assigned': 'bg-purple-100 text-purple-600',
+            'Status_Changed': 'bg-yellow-100 text-yellow-600',
+            'Boost_Issue': 'bg-orange-100 text-orange-600',
+            'Rejected': 'bg-red-100 text-red-600'
         };
         return colors[type] || 'bg-gray-100 text-gray-600';
     };
@@ -687,7 +704,7 @@ const IssueDetailsPage = () => {
     const isOwner = issue?.reportedByEmail === user?.email;
     const canEdit = isOwner && !currentUser?.isBlocked && issue.status === 'Pending';
     const canDelete = isOwner && !currentUser?.isBlocked && issue.status === 'Pending';
-    const canBoost = isOwner && !issue.isBoosted && !currentUser?.isBlocked;
+    const canBoost = isOwner && !issue.isBoosted && !currentUser?.isBlocked && issue.status === 'Pending';
 
     return (
         <div className="min-h-screen bg-linear-to-br from-gray-50 to-blue-50/30 p-4 md:p-6 lg:p-8">
@@ -756,7 +773,7 @@ const IssueDetailsPage = () => {
                             <div className="pl-6 sm:pl-8 pb-6">
                                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-1">
                                     <div>
-                                        <div className="flex items-center justify-between mb-4">
+                                        <div className="flex justify-between items-center gap-20 mb-4 mt-6 mr-5">
                                             <div className='flex items-center gap-2'>
                                                 <div className='flex items-center gap-2'>
                                                     <span className="text-2xl">{categoryConfig.icon}</span>
@@ -857,26 +874,6 @@ const IssueDetailsPage = () => {
                                 <div className="prose max-w-none text-gray-700 mb-8">
                                     <p className="whitespace-pre-line">{issue.description}</p>
                                 </div>
-
-                                {/* Stats */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 bg-gray-50 rounded-2xl">
-                                    <div className="text-center">
-                                        <div className="text-3xl font-bold text-blue-600">{issue.upVotes || 0}</div>
-                                        <div className="text-gray-600">Upvotes</div>
-                                    </div>
-                                    <div className="text-center">
-                                        <div className="text-3xl font-bold text-green-600">
-                                            {issue.timeline?.filter(item => item.type === 'comment').length || 0}
-                                        </div>
-                                        <div className="text-gray-600">Comments</div>
-                                    </div>
-                                    <div className="text-center">
-                                        <div className="text-3xl font-bold text-purple-600">
-                                            {issue.timeline?.length || 0}
-                                        </div>
-                                        <div className="text-gray-600">Updates</div>
-                                    </div>
-                                </div>
                             </div>
                         </motion.div>
 
@@ -895,55 +892,49 @@ const IssueDetailsPage = () => {
                             </div>
 
                             <div className="p-6 md:p-8">
-                                {issue.timeline && issue.timeline.length > 0 ? (
+                                {issue.timelineEntry && issue.timelineEntry.length > 0 ? (
                                     <div className="relative">
                                         {/* Vertical Timeline Line */}
                                         <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-200"></div>
 
                                         {/* Timeline Items */}
                                         <div className="space-y-8">
-                                            {issue.timeline
-                                                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                                            {issue.timelineEntry
+                                                .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
                                                 .map((item, index) => (
                                                     <div key={index} className="relative flex gap-4">
                                                         {/* Timeline Dot */}
-                                                        <div className={`relative z-10 w-12 h-12 rounded-full flex items-center justify-center ${getTimelineColor(item.type)}`}>
-                                                            {getTimelineIcon(item.type)}
+                                                        <div className={`relative z-10 w-12 h-12 rounded-full flex items-center justify-center ${getTimelineColor(item.action)}`}>
+                                                            {getTimelineIcon(item.action)}
                                                         </div>
 
                                                         {/* Content */}
                                                         <div className="flex-1 pb-8">
                                                             <div className="bg-gray-50 rounded-xl p-4">
                                                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                                                                    <h4 className="font-semibold text-gray-900">{item.title}</h4>
+                                                                    <h4 className="font-semibold text-gray-900">{item.action}</h4>
                                                                     <span className="text-sm text-gray-500">
-                                                                        {formatTimelineDate(item.createdAt)}
+                                                                        {formatTimelineDate(item.timestamp)}
                                                                     </span>
                                                                 </div>
 
-                                                                {item.message && (
-                                                                    <p className="text-gray-700 mb-3">{item.message}</p>
+                                                                {item.note && (
+                                                                    <p className="text-gray-700 mb-3">{item.note}</p>
                                                                 )}
 
                                                                 <div className="flex items-center justify-between">
                                                                     <div className="flex items-center gap-2">
                                                                         <UserIcon className="w-4 h-4 text-gray-400" />
                                                                         <span className="text-sm text-gray-600">
-                                                                            {item.updatedBy || 'System'}
+                                                                            {item.by || 'System'}
                                                                         </span>
                                                                     </div>
-
-                                                                    {item.status && (
-                                                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusConfig(item.status).bg} ${getStatusConfig(item.status).textColor}`}>
-                                                                            {getStatusConfig(item.status).text}
-                                                                        </span>
-                                                                    )}
                                                                 </div>
                                                             </div>
 
                                                             {/* Detailed Date */}
                                                             <div className="mt-2 text-xs text-gray-400">
-                                                                {formatDate(item.createdAt)}
+                                                                {formatDate(item.timestamp)}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -968,7 +959,7 @@ const IssueDetailsPage = () => {
                     {/* Right Column - Sidebar */}
                     <div className="space-y-8">
                         {/* Assigned Staff Card */}
-                        {assignedStaff && Object.keys(assignedStaff).length > 0 && (
+                        {issue.assignedStaffId && (
                             <motion.div
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
@@ -984,34 +975,16 @@ const IssueDetailsPage = () => {
 
                                 <div className="p-6">
                                     <div className="flex items-center gap-4 mb-4">
-                                        <div className="w-16 h-16 bg-linear-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xl font-bold">
-                                            {assignedStaff.name?.charAt(0) || 'S'}
-                                        </div>
                                         <div>
-                                            <h4 className="font-bold text-gray-900 text-lg">{assignedStaff.name}</h4>
-                                            <p className="text-gray-600 text-sm">{assignedStaff.department || 'Staff'}</p>
+                                            <h4 className="font-bold text-gray-900 text-lg">{issue.assignedStaffName}</h4>
                                         </div>
                                     </div>
 
                                     <div className="space-y-3">
-                                        {assignedStaff.email && (
+                                        {issue.assignedStaffEmail && (
                                             <div className="flex items-center gap-3 text-gray-600">
                                                 <HiOutlineUser className="w-4 h-4" />
-                                                <span className="text-sm">{assignedStaff.email}</span>
-                                            </div>
-                                        )}
-
-                                        {assignedStaff.phone && (
-                                            <div className="flex items-center gap-3 text-gray-600">
-                                                <HiOutlineChatAlt className="w-4 h-4" />
-                                                <span className="text-sm">{assignedStaff.phone}</span>
-                                            </div>
-                                        )}
-
-                                        {assignedStaff.assignedDate && (
-                                            <div className="flex items-center gap-3 text-gray-600">
-                                                <HiOutlineCalendar className="w-4 h-4" />
-                                                <span className="text-sm">Assigned {formatTimelineDate(assignedStaff.assignedDate)}</span>
+                                                <span className="text-sm">{issue.assignedStaffEmail}</span>
                                             </div>
                                         )}
                                     </div>
@@ -1060,17 +1033,10 @@ const IssueDetailsPage = () => {
                                     <div className="font-medium text-gray-800">{formatDate(issue.createdAt)}</div>
                                 </div>
 
-                                {issue.resolvedDate && (
-                                    <div>
-                                        <div className="text-gray-500 text-lg font-semibold">Resolved</div>
-                                        <div className="font-medium text-gray-800">{formatDate(issue.resolvedDate)}</div>
-                                    </div>
-                                )}
-
-                                {issue.lastUpdated && (
+                                {issue.updatedAt && (
                                     <div>
                                         <div className="text-gray-500 text-lg font-semibold">Last Updated</div>
-                                        <div className="font-medium text-gray-800">{formatTimelineDate(issue.lastUpdated)}</div>
+                                        <div className="font-medium text-gray-800">{formatTimelineDate(issue.updatedAt)}</div>
                                     </div>
                                 )}
                             </div>

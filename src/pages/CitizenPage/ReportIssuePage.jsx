@@ -75,17 +75,20 @@ const ReportIssuePage = () => {
     // Categories
     const categories = [
         { value: '', label: 'Select Category', icon: '📋' },
-        { value: 'road_damage', label: 'Road Damage (Potholes)', icon: '🛣️' },
-        { value: 'streetlight', label: 'Broken Streetlight', icon: '💡' },
-        { value: 'water', label: 'Water Leakage', icon: '💧' },
-        { value: 'garbage', label: 'Garbage Overflow', icon: '🗑️' },
-        { value: 'footpath', label: 'Damaged Footpath', icon: '🚶' },
-        { value: 'drainage', label: 'Blocked Drainage', icon: '🌊' },
-        { value: 'traffic', label: 'Traffic Signal Issue', icon: '🚦' },
-        { value: 'parks', label: 'Park Maintenance', icon: '🌳' },
-        { value: 'public_toilet', label: 'Public Toilet Issue', icon: '🚻' },
-        { value: 'noise', label: 'Noise Pollution', icon: '🔇' },
-        { value: 'other', label: 'Other Issue', icon: '❓' },
+        { value: 'Road_damage', label: 'Road Damage (Potholes)', icon: '🛣️' },
+        { value: 'Streetlight', label: 'Broken Streetlight', icon: '💡' },
+        { value: 'Garbage', label: 'Garbage Overflow', icon: '🗑️' },
+        { value: 'Footpath', label: 'Damaged Footpath', icon: '🚶' },
+        { value: 'Drainage', label: 'Blocked Drainage', icon: '🌊' },
+        { value: 'Traffic', label: 'Traffic Signal Issue', icon: '🚦' },
+        { value: 'Parks', label: 'Park Maintenance', icon: '🌳' },
+        { value: 'Public_toilet', label: 'Public Toilet Issue', icon: '🚻' },
+        { value: 'Noise', label: 'Noise Pollution', icon: '🔇' },
+        { value: 'Electricity', label: 'Electricity Issue', icon: '💡' },
+        { value: 'Water_Supply', label: 'Water Supply Issue', icon: '💧' },
+        { value: 'Sanitation', label: 'Sanitation Issue', icon: '🗑️' },
+        { value: 'Infrastructure', label: 'Infrastructure Issue', icon: '🏗️' },
+        { value: 'Other', label: 'Other Issue', icon: '❓' },
     ];
 
     // Check if singleUser can report more issues
@@ -209,41 +212,21 @@ const ReportIssuePage = () => {
 
 
         try {
-            // Create FormData for file upload
-            const submissionData = new FormData();
-            submissionData.append('title', formData.title);
-            submissionData.append('description', formData.description);
-            submissionData.append('category', formData.category);
-            submissionData.append('location', formData.location);
-            submissionData.append('priority', formData.priority);
-            submissionData.append('contactEmail', formData.contactEmail);
-            submissionData.append('contactPhone', formData.contactPhone);
-
-            formData.images.forEach((image) => {
-                submissionData.append(`images`, image);
-            });
-
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 1500));
 
             // Create tracking timeline entry
             const trackingEntry = {
-                id: Date.now(),
-                status: 'pending',
-                action: 'Issue Reported',
-                description: 'Issue has been submitted and is awaiting review',
-                timestamp: new Date().toISOString(),
-                by: 'System',
+                action: 'Issue_Reported',
+                note: 'Issue has been submitted and is awaiting review',
+                timestamp: new Date(),
+                by: user.email,
             };
 
             // Save to database (simulated)
-            console.log('Submitting issue:', {
+            const data = {
                 ...formData,
-                tracking: [trackingEntry],
+                timelineEntry: [trackingEntry],
                 createdAt: new Date().toISOString(),
-                status: 'pending',
-                singleUserId: 1, 
-            });
+            }
 
             Swal.fire({
                 title: "Report Issue Confirmation",
@@ -268,7 +251,7 @@ const ReportIssuePage = () => {
                     });
 
                     // Save the issue to the database
-                    axiosSecure.post('/reportIssue', formData)
+                    axiosSecure.post('/reportIssue', data)
                         .then(res => {
                             // console.log('Issue saved successfully:', res.data);
 
@@ -289,7 +272,7 @@ const ReportIssuePage = () => {
                                     if (result.isConfirmed) {
                                         // Alternative: Auto navigate after success
                                         axiosSecure.patch(`/updateUser/${singUser?._id}`, { issueCount: singUser.issueCount + 1 })
-                                        .then().catch()
+                                            .then().catch()
 
                                         navigate('/dashboard/myIssues');
                                     }

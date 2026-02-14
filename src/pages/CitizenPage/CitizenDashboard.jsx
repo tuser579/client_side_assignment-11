@@ -6,7 +6,10 @@ import {
   AlertTriangle,
   TrendingUp,
   DollarSign,
-  AlertCircle
+  AlertCircle,
+  Wrench,
+  XCircle,
+  Lock
 } from 'lucide-react';
 import { Bar } from "react-chartjs-2";
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, } from "chart.js";
@@ -44,7 +47,7 @@ const CitizenDashboard = () => {
 
   const chartData = {
     // labels: ["Total Issues", "Pending Issues", "In Progress Issues", "Resolved Issues", "Total Payments",],
-    labels: ["Total Issues", "Pending Issues", "In Progress Issues", "Resolved Issues",],
+    labels: ["Total Issues", "Pending Issues", "In-Progress Issues", "Resolved Issues",],
     datasets: [
       {
         label: "Dashboard Stats",
@@ -55,7 +58,7 @@ const CitizenDashboard = () => {
           // dashboardStats.pendingIssues,
           (issues.filter(issue => issue.status === "Pending"))?.length,
           // dashboardStats.inProgressIssues,
-          (issues.filter(issue => issue.status === "In-progress"))?.length,
+          (issues.filter(issue => issue.status === "In-Progress"))?.length,
           // dashboardStats.resolvedIssues, 
           issues.filter(i => i.status === 'Resolved').length,
           // dashboardStats.totalPayments,
@@ -94,11 +97,11 @@ const CitizenDashboard = () => {
 
   const StatCard = ({ title, value, icon: Icon, color }) => (
     <div className="card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-300">
-      <div className="card-body p-6">
+      <div className="card-body p-3">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</p>
-            <p className="text-3xl font-bold mt-2">{value}</p>
+            <p className="text-2xl font-bold mt-2">{value}</p>
           </div>
           <div className={`p-3 rounded-full ${color} bg-opacity-10`}>
             <Icon className={`w-8 h-8 ${color.replace('text-', 'text-')}`} />
@@ -150,7 +153,7 @@ const CitizenDashboard = () => {
       </div >
 
       {/* Stats Grid */}
-      < div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" >
+      <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-7">
         <StatCard
           title="Total Issues"
           value={issues.length}
@@ -158,24 +161,42 @@ const CitizenDashboard = () => {
           color="text-blue-500"
         />
         <StatCard
-          title="Pending Issues"
+          title="Pending"
           value={(issues.filter(issue => issue.status === "Pending"))?.length}
           icon={Clock}
           color="text-yellow-500"
         />
         <StatCard
-          title="In Progress"
-          value={(issues.filter(issue => issue.status === "In-progress"))?.length}
+          title="In-Progress"
+          value={(issues.filter(issue => issue.status === "In-Progress"))?.length}
           icon={AlertTriangle}
+          color="text-purple-500"
+        />
+        <StatCard
+          title="Working"
+          value={(issues.filter(issue => issue.status === "Working"))?.length}
+          icon={Wrench}
           color="text-orange-500"
         />
         <StatCard
-          title="Resolved Issues"
+          title="Resolved"
           value={(issues.filter(issue => issue.status === "Resolved"))?.length}
           icon={CheckCircle}
           color="text-green-500"
         />
-      </div >
+        <StatCard
+          title="Closed"
+          value={(issues.filter(issue => issue.status === "Closed"))?.length}
+          icon={Lock}
+          color="text-gray-500"
+        />
+        <StatCard
+          title="Rejected"
+          value={(issues.filter(issue => issue.status === "Rejected"))?.length}
+          icon={XCircle}
+          color="text-red-500"
+        />
+      </div>
 
       {/* Charts and Additional Stats */}
       < div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8" >
@@ -197,9 +218,6 @@ const CitizenDashboard = () => {
                 <span className="text-lg font-semibold">100 ৳</span>
               </div>
             </div>
-            <NavLink to='my-payment-history' className="btn btn-outline btn-sm p-6 text-white text-[1.1rem] border-white hover:bg-white hover:text-purple-600 mt-6">
-              View Payment History
-            </NavLink>
           </div>
         </div >
 

@@ -8,7 +8,7 @@ const LatestResolvedIssue = () => {
   const [issues, setIssues] = useState([]);
 
   useEffect(() => {
-    fetch('http://localhost:3999/sixResolvedIssue')
+    fetch('https://cityfix-server.vercel.app/sixResolvedIssue')
       .then(res => res.json())
       .then(data => {
         setIssues(data);

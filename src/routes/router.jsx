@@ -1,7 +1,6 @@
 import { createBrowserRouter } from "react-router";
 import RootLayout from "../layout/RootLayout";
 import Home from "../pages/Home/Home/Home";
-import Coverage from "../pages/Coverage/Coverage";
 import AuthLayout from "../layout/AuthLayout";
 import Login from "../pages/Auth/Login/Login";
 import Register from "../pages/Auth/Register/Register";
@@ -20,6 +19,21 @@ import PaymentSuccess from "../pages/CitizenPage/Payment/PaymentSuccess";
 import PaymentCancelled from "../pages/CitizenPage/Payment/PaymentCancelled";
 import MyPaymentHistory from "../pages/CitizenPage/Payment/MyPaymentHistory";
 import IssueDetailsPage from "../pages/IssueDetailsPage/IssueDetailsPage";
+import AdminDashboard from "../pages/AdminPage/AdminDashboard";
+import ManageUsers from "../pages/AdminPage/ManageUsers";
+import StaffManagement from "../pages/AdminPage/StaffManagement";
+import PaymentsPage from "../pages/AdminPage/PaymentsPage";
+import IssuesManagement from "../pages/AdminPage/IssuesManagement";
+import AdminProfilePage from "../pages/AdminPage/AdminProfilePage";
+import StaffDashboard from "../pages/StaffPage/StaffDashboard";
+import AssignedIssues from "../pages/StaffPage/AssignedIssues";
+import StaffProfilePage from "../pages/StaffPage/StaffProfilePage";
+import AdminRoute from "./AdminRoute";
+import CitizenRoute from "./CitizenRoute";
+import StaffRoute from "./StaffRoute";
+// import useRole from "../hooks/useRole";
+
+// const { role } = useRole();
 
 export const router = createBrowserRouter([
   {
@@ -41,11 +55,6 @@ export const router = createBrowserRouter([
       {
         path: '/contact',
         Component: Contact
-      },
-      {
-        path: 'coverage',
-        Component: Coverage,
-        loader: () => fetch('/serviceCenters.json').then(res => res.json())
       },
       {
         path: '/issueDetailsPage/:id',
@@ -72,24 +81,28 @@ export const router = createBrowserRouter([
     element: <PrivateRoute><DashboardLayout></DashboardLayout></PrivateRoute>,
     children: [
       {
-        index: true, 
-        Component: CitizenDashboard
+        path: 'citizenDashboard',
+        element: <CitizenRoute><CitizenDashboard></CitizenDashboard></CitizenRoute>
       },
       {
         path: 'myIssues',
-        Component: MyIssuesPage
+        element: <CitizenRoute><MyIssuesPage></MyIssuesPage></CitizenRoute>
       },
       {
         path: 'reportIssue',
-        Component: ReportIssuePage
+        element: <CitizenRoute><ReportIssuePage></ReportIssuePage></CitizenRoute>
       },
       {
         path: 'profilePage',
-        Component: ProfilePage 
+        element: <CitizenRoute><ProfilePage></ProfilePage></CitizenRoute>
       },
       {
         path: 'givenReview',
-        Component: GivenReview
+        element: <CitizenRoute><GivenReview></GivenReview></CitizenRoute>
+      },
+      {
+        path: 'my-payment-history',
+        Component: MyPaymentHistory
       },
       {
         path: 'payment-success',
@@ -100,8 +113,40 @@ export const router = createBrowserRouter([
         Component: PaymentCancelled
       },
       {
-        path: 'my-payment-history',
-        Component: MyPaymentHistory
+        path: 'adminDashboard',
+        element: <AdminRoute><AdminDashboard></AdminDashboard></AdminRoute>
+      },
+      {
+        path: 'issuesManagement',
+        element: <AdminRoute><IssuesManagement></IssuesManagement></AdminRoute>
+      },
+      {
+        path: "manageUsers",
+        element: <AdminRoute><ManageUsers></ManageUsers></AdminRoute>
+      },
+      {
+        path: 'paymentsPage',
+        element: <AdminRoute><PaymentsPage></PaymentsPage></AdminRoute>
+      },
+      {
+        path: 'staffManagement',
+        element: <AdminRoute><StaffManagement></StaffManagement></AdminRoute>
+      },
+      {
+        path: 'adminProfile',
+        element: <AdminRoute><AdminProfilePage></AdminProfilePage></AdminRoute>
+      },
+      {
+        path: 'staffDashboard',
+        element: <StaffRoute><StaffDashboard></StaffDashboard></StaffRoute>
+      },
+      {
+        path: 'assignedIssues',
+        element: <StaffRoute><AssignedIssues></AssignedIssues></StaffRoute>
+      },
+      {
+        path: 'staffProfile',
+        element: <StaffRoute><StaffProfilePage></StaffProfilePage></StaffRoute>
       }
     ]
   },

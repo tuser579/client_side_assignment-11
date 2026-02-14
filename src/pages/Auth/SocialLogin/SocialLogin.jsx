@@ -40,15 +40,14 @@ const SocialLogin = () => {
 
                     // navigate after login
                     navigate(location.state || "/");
-                } catch (error) {
-                    console.error("Error saving user:", error);
+                } catch (error) {  
+                    console.log("Error saving user:", error);
                 }
             })
             .catch((error) => {
-                console.error("Google sign-in error:", error);
+                console.log("Google sign-in error:", error);
             });
     };
-
 
     return (
         <div className='text-center pb-8'>

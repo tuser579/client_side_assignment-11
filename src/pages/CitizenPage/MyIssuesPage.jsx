@@ -27,7 +27,9 @@ import {
   HiOutlineChevronLeft,
   HiOutlineChevronRight,
   HiOutlineChevronDoubleLeft,
-  HiOutlineChevronDoubleRight
+  HiOutlineChevronDoubleRight,
+  HiOutlineCog,
+  HiOutlineLockClosed
 } from 'react-icons/hi';
 import { AlertCircle } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
@@ -52,7 +54,7 @@ const MyIssuesPage = () => {
     title: '',
     description: '',
     category: '',
-    priority: 'Normal',
+    priority: '',
     location: '',
     images: []
   });
@@ -196,18 +198,31 @@ const MyIssuesPage = () => {
     return pageNumbers;
   };
 
-  // Get status config
+  // Get status config - UPDATED with safety checks
   const getStatusConfig = (status) => {
+    if (!status) {
+      return {
+        color: 'bg-gray-100',
+        icon: <HiOutlineExclamation className="w-4 h-4 text-gray-500" />,
+        text: 'Unknown'
+      };
+    }
+
     const configs = {
       'Pending': {
         color: 'bg-linear-to-r from-orange-500 to-amber-500',
         icon: <HiOutlineClock className="w-4 h-4" />,
         text: 'Pending'
       },
-      'In-progress': {
+      'In-Progress': {
         color: 'bg-linear-to-r from-blue-500 to-cyan-500',
-        icon: <HiOutlineClock className="w-4 h-4" />,
-        text: 'In Progress'
+        icon: <HiOutlineRefresh className="w-4 h-4" />,
+        text: 'In-Progress'
+      },
+      'Working': {
+        color: 'bg-linear-to-r from-purple-500 to-indigo-500',
+        icon: <HiOutlineCog className="w-4 h-4" />,
+        text: 'Working'
       },
       'Resolved': {
         color: 'bg-linear-to-r from-green-500 to-emerald-500',
@@ -216,75 +231,105 @@ const MyIssuesPage = () => {
       },
       'Closed': {
         color: 'bg-linear-to-r from-gray-500 to-gray-600',
-        icon: <HiOutlineXCircle className="w-4 h-4" />,
+        icon: <HiOutlineLockClosed className="w-4 h-4" />,
         text: 'Closed'
+      },
+      'Rejected': {
+        color: 'bg-linear-to-r from-red-500 to-pink-500',
+        icon: <HiOutlineXCircle className="w-4 h-4" />,
+        text: 'Rejected'
       }
     };
-    return configs[status] || configs.pending;
+
+    // Handle case-insensitive status
+    const normalizedStatus = Object.keys(configs).find(key =>
+      key.toLowerCase() === status.toLowerCase()
+    ) || 'Pending';
+
+    return configs[normalizedStatus] || configs.Pending;
   };
 
-  // Get priority config
+  // Get priority config - UPDATED with safety checks
   const getPriorityConfig = (priority) => {
+    if (!priority) {
+      return {
+        color: 'bg-gray-100',
+        text: 'Normal',
+        icon: <HiOutlineBookmark className="w-4 h-4 text-gray-500" />
+      };
+    }
+
     const configs = {
-      'high': {
+      'High': {
         color: 'bg-linear-to-r from-orange-500 to-red-500',
         text: 'High',
         icon: <HiOutlineExclamationCircle className="w-4 h-4" />
       },
-      'normal': {
+      'Normal': {
         color: 'bg-linear-to-r from-blue-500 to-blue-600',
         text: 'Normal',
         icon: <HiOutlineBookmark className="w-4 h-4" />
       }
     };
-    return configs[priority] || configs.normal;
+
+    // Return matching config or default to Normal
+    return configs[priority] || configs.Normal;
   };
 
-  // Get category icon
+  // Get category icon - UPDATED with safety checks
   const getCategoryIcon = (category) => {
+    if (!category) {
+      return '📋';
+    }
+
     const icons = {
-      'streetlight': '💡',
-      'water': '💧',
-      'road_damage': '🛣️',
-      'garbage': '🗑️',
-      'footpath': '🚶',
-      'drainage': '🌊',
-      'traffic': '🚦',
-      'parks': '🌳',
-      'public_toilet': '🚻',
-      'noise': '🔇',
-      'other': '❓'
+      'Streetlight': '💡',
+      'Road_Damage': '🛣️',
+      'Garbage': '🗑️',
+      'Footpath': '🚶',
+      'Drainage': '🌊',
+      'Traffic': '🚦',
+      'Parks': '🌳',
+      'Public_Toilet': '🚻',
+      'Noise': '🔇',
+      'Electricity': '💡',
+      'Water_Supply': '💧',
+      'Sanitation': '🗑️',
+      'Infrastructure': '🏗️',
+      'Other': '❓'
     };
+
     return icons[category] || '📋';
   };
 
   // Handle edit
   const handleEdit = (issue) => {
-    // console.log("Issue", issue);
-
     // Check if user is blocked 
     if (singUser?.isBlocked) {
       toast.error('Your account is blocked. You cannot edit this issue.');
       return;
     }
 
-    if (issue.status === 'Pending') {
-      setEditingIssue(issue);
-      setFormData({
-        title: issue.title,
-        description: issue.description,
-        category: issue.category,
-        priority: issue.priority,
-        location: issue.location,
-        images: issue.images || []
-      });
-      setShowEditModal(true);
+    // Check if issue exists and has status
+    if (!issue || issue.status !== 'Pending') {
+      toast.error('This issue cannot be edited.');
+      return;
     }
+
+    setEditingIssue(issue);
+    setFormData({
+      title: issue.title || '',
+      description: issue.description || '',
+      category: issue.category || '',
+      priority: issue.priority || 'Normal',
+      location: issue.location || '',
+      images: issue.images || []
+    });
+    setShowEditModal(true);
   };
 
   // Handle delete with SweetAlert2
   const handleDelete = (issueId) => {
-
     // Check if user is blocked 
     if (singUser?.isBlocked) {
       toast.error('Your account is blocked. You cannot delete this issue.');
@@ -331,7 +376,6 @@ const MyIssuesPage = () => {
       }
     });
   };
-
 
   // Handle form submit with SweetAlert2
   const handleSubmit = async (e) => {
@@ -387,20 +431,37 @@ const MyIssuesPage = () => {
     });
   };
 
-  // Get first image from array or default
+  // Get first image from array or default - UPDATED with safety checks
   const getIssueImage = (issue) => {
-    // console.log("Issue", issue);
-    if (issue.images && issue.images.length > 0) {
-      return issue.images[0];
+    // Check if issue exists
+    if (!issue) {
+      return 'https://images.unsplash.com/photo-1541746972996-4e0b0f43e02a?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80';
+    }
+
+    // Check if images array exists and has at least one valid image
+    if (issue.images && Array.isArray(issue.images) && issue.images.length > 0) {
+      const firstImage = issue.images[0];
+      if (firstImage && typeof firstImage === 'string' && firstImage.trim() !== '') {
+        return firstImage;
+      }
     }
 
     // Default images based on category
     const defaultImages = {
       'Electricity': 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-      'Water Supply': 'https://images.unsplash.com/photo-1621452773781-0f992fd1f5c0?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-      'Road Maintenance': 'https://images.unsplash.com/photo-1542223616-740d5dff7f56?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+      'Water_Supply': 'https://images.unsplash.com/photo-1621452773781-0f992fd1f5c0?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+      'Road_Damage': 'https://images.unsplash.com/photo-1542223616-740d5dff7f56?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
       'Sanitation': 'https://images.unsplash.com/photo-1578558288136-7207e7747ba6?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
       'Infrastructure': 'https://images.unsplash.com/photo-1544457070-4cd773b4d71e?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+      'Streetlight': 'https://images.unsplash.com/photo-1517322048670-4fba75cbbb62?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+      'Garbage': 'https://images.unsplash.com/photo-1578558288136-7207e7747ba6?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+      'Footpath': 'https://images.unsplash.com/photo-1542223616-740d5dff7f56?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+      'Drainage': 'https://images.unsplash.com/photo-1621452773781-0f992fd1f5c0?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+      'Traffic': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+      'Parks': 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+      'Public_Toilet': 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+      'Noise': 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+      'Other': 'https://images.unsplash.com/photo-1541746972996-4e0b0f43e02a?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
       'default': 'https://images.unsplash.com/photo-1541746972996-4e0b0f43e02a?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80'
     };
 
@@ -500,7 +561,7 @@ const MyIssuesPage = () => {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
             <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-200">
               <div className="text-2xl font-bold text-blue-600">{issues.length}</div>
               <div className="text-sm text-gray-600">Total Issues</div>
@@ -512,10 +573,34 @@ const MyIssuesPage = () => {
               <div className="text-sm text-gray-600">Pending</div>
             </div>
             <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-200">
+              <div className="text-2xl font-bold text-orange-600">
+                {issues.filter(i => i.status === 'In-Progress').length}
+              </div>
+              <div className="text-sm text-gray-600">In-Progress</div>
+            </div>
+            <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-200">
+              <div className="text-2xl font-bold text-orange-600">
+                {issues.filter(i => i.status === 'Working').length}
+              </div>
+              <div className="text-sm text-gray-600">Working</div>
+            </div>
+            <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-200">
               <div className="text-2xl font-bold text-green-600">
                 {issues.filter(i => i.status === 'Resolved').length}
               </div>
               <div className="text-sm text-gray-600">Resolved</div>
+            </div>
+            <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-200">
+              <div className="text-2xl font-bold text-green-600">
+                {issues.filter(i => i.status === 'Closed').length}
+              </div>
+              <div className="text-sm text-gray-600">Closed</div>
+            </div>
+            <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-200">
+              <div className="text-2xl font-bold text-green-600">
+                {issues.filter(i => i.status === 'Rejected').length}
+              </div>
+              <div className="text-sm text-gray-600">Rejected</div>
             </div>
             <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-200">
               <div className="text-2xl font-bold text-purple-600">
@@ -558,10 +643,12 @@ const MyIssuesPage = () => {
                 className="px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 bg-white"
               >
                 <option value="all">All Status</option>
-                <option value="pending">Pending</option>
-                <option value="in-progress">In Progress</option>
-                <option value="resolved">Resolved</option>
-                <option value="closed">Closed</option>
+                <option value="Pending">Pending</option>
+                <option value="In-progress">In-Progress</option>
+                <option value="Working">Working</option>
+                <option value="Resolved">Resolved</option>
+                <option value="Closed">Closed</option>
+                <option value="Rejected">Rejected</option>
               </select>
             </div>
 
@@ -574,8 +661,9 @@ const MyIssuesPage = () => {
               }}
               className="px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 bg-white"
             >
-              <option value="normal">Normal</option>
-              <option value="high">High</option>
+              <option value="all">All Priority</option>
+              <option value="Normal">Normal</option>
+              <option value="High">High</option>
             </select>
 
             {/* Items per page selector */}
@@ -621,12 +709,14 @@ const MyIssuesPage = () => {
         <AnimatePresence>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {paginatedIssues.map((issue, index) => {
+              if (!issue) return null; // Skip if issue is undefined
+
               const statusConfig = getStatusConfig(issue.status);
               const priorityConfig = getPriorityConfig(issue.priority);
 
               return (
                 <motion.div
-                  key={issue._id}
+                  key={issue._id || index}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
@@ -647,7 +737,7 @@ const MyIssuesPage = () => {
                   <div className="relative h-48 overflow-hidden rounded-lg">
                     <img
                       src={getIssueImage(issue)}
-                      alt={issue.title}
+                      alt={issue.title || 'Issue image'}
                       className="w-full h-full"
                     />
                     <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent"></div>
@@ -667,7 +757,9 @@ const MyIssuesPage = () => {
                     {/* Category Badge */}
                     <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded-lg flex items-center">
                       <span className="text-lg mr-2">{getCategoryIcon(issue.category)}</span>
-                      <span className="text-sm font-medium text-gray-800">{issue.category}</span>
+                      <span className="text-sm font-medium text-gray-800">
+                        {issue.category || 'Uncategorized'}
+                      </span>
                     </div>
 
                     {/* Image Count */}
@@ -685,27 +777,29 @@ const MyIssuesPage = () => {
                     <div className="mb-3">
                       <div className="flex items-start justify-between">
                         <h3 className="text-lg font-bold text-gray-900 line-clamp-1 group-hover:text-blue-600 transition-colors">
-                          {issue.title}
+                          {issue.title || 'Untitled Issue'}
                         </h3>
                       </div>
                     </div>
 
                     {/* Description */}
                     <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                      {issue.description}
+                      {issue.description.slice(0, 47) || 'No description provided.'}
                     </p>
 
                     {/* Meta Info */}
                     <div className="space-y-2 mb-4">
                       <div className="flex items-center text-gray-700 text-sm">
                         <HiOutlineLocationMarker className="w-4 h-4 mr-2 text-gray-500" />
-                        <span className="truncate">{issue.location}</span>
+                        <span className="truncate">{issue.location || 'Location not specified'}</span>
                       </div>
 
                       <div className="flex items-center justify-between">
                         <div className="flex items-center text-gray-700 text-sm">
                           <HiOutlineCalendar className="w-4 h-4 mr-2 text-gray-500" />
-                          <span>{new Date(issue.createdAt).toLocaleDateString()}</span>
+                          <span>
+                            {issue.createdAt ? new Date(issue.createdAt).toLocaleDateString() : 'Date unknown'}
+                          </span>
                         </div>
 
                         <div className="flex items-center text-blue-600 text-sm font-medium">
@@ -722,7 +816,6 @@ const MyIssuesPage = () => {
                         {issue.status === 'Pending' && (
                           <button
                             onClick={() => handleEdit(issue)}
-                            // disabled={updateIssueMutation.isLoading || singUser?.isBlocked}
                             className="p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors duration-300 group/edit disabled:opacity-50 disabled:cursor-not-allowed"
                             title={singUser?.isBlocked ? "Account Blocked" : "Edit Issue"}
                           >
@@ -731,14 +824,15 @@ const MyIssuesPage = () => {
                         )}
 
                         {/* Delete Button */}
-                        <button
-                          onClick={() => handleDelete(issue._id)}
-                          // disabled={deleteIssueMutation.isLoading || singUser?.isBlocked}
-                          className="p-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition-colors duration-300 group/delete disabled:opacity-50 disabled:cursor-not-allowed"
-                          title={singUser?.isBlocked ? "Account Blocked" : "Delete Issue"}
-                        >
-                          <HiOutlineTrash className="w-5 h-5 group-hover/delete:scale-110 transition-transform" />
-                        </button>
+                        {issue.status === 'Pending' && (
+                          <button
+                            onClick={() => handleDelete(issue._id)}
+                            className="p-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition-colors duration-300 group/delete disabled:opacity-50 disabled:cursor-not-allowed"
+                            title={singUser?.isBlocked ? "Account Blocked" : "Delete Issue"}
+                          >
+                            <HiOutlineTrash className="w-5 h-5 group-hover/delete:scale-110 transition-transform" />
+                          </button>
+                        )}
                       </div>
 
                       {/* View Details Button */}
@@ -828,7 +922,7 @@ const MyIssuesPage = () => {
                     <button
                       key={pageNum}
                       onClick={() => goToPage(pageNum)}
-                      className={`px-3 py-1.5 min-w-[40px] rounded-lg font-medium transition-all duration-200 ${currentPage === pageNum
+                      className={`px-3 py-1.5 min-w-10 rounded-lg font-medium transition-all duration-200 ${currentPage === pageNum
                         ? 'bg-linear-to-r from-blue-600 to-purple-600 text-white shadow-md'
                         : 'text-gray-700 hover:bg-gray-100 hover:text-blue-600'
                         }`}
@@ -944,17 +1038,21 @@ const MyIssuesPage = () => {
                         className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-300 disabled:opacity-50"
                       >
                         <option value="">Select Category</option>
-                        <option value="road_damage">Road Damage (Potholes)</option>
-                        <option value="streetlight">Broken Streetlight</option>
-                        <option value="water">Water Leakage</option>
-                        <option value="garbage">Garbage Overflow</option>
-                        <option value="footpath">Damaged Footpath</option>
-                        <option value="drainage">Blocked Drainage</option>
-                        <option value="traffic">Traffic Signal Issue</option>
-                        <option value="parks">Park Maintenance</option>
-                        <option value="public_toilet">Public Toilet Issue</option>
-                        <option value="noise">Noise Pollution</option>
-                        <option value="other">Other Issue</option>
+                        <option value="Road_Damage">Road Damage (Potholes)</option>
+                        <option value="Streetlight">Broken Streetlight</option>
+                        <option value="Water">Water Leakage</option>
+                        <option value="Garbage">Garbage Overflow</option>
+                        <option value="Footpath">Damaged Footpath</option>
+                        <option value="Drainage">Blocked Drainage</option>
+                        <option value="Traffic">Traffic Signal Issue</option>
+                        <option value="Parks">Park Maintenance</option>
+                        <option value="Public_Toilet">Public Toilet Issue</option>
+                        <option value="Noise">Noise Pollution</option>
+                        <option value="Electricity">Electricity Issue</option>
+                        <option value="Water_Supply">Water Supply Issue</option>
+                        <option value="Sanitation">Sanitation Issue</option>
+                        <option value="Infrastructure">Infrastructure Issue</option>
+                        <option value="Other">Other Issue</option>
                       </select>
                     </div>
                   </div>

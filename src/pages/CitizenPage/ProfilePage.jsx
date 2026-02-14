@@ -32,13 +32,27 @@ const ProfilePage = () => {
     const { user, updateUserProfile } = useAuth();
     const axiosSecure = useAxiosSecure();
 
-    const { data: singUser = {}, refetch } = useQuery({
-        queryKey: ['singleUser', user?.email],
+    const {
+        data = {},
+        refetch
+    } = useQuery({
+        queryKey: ['userData', user?.email],
+        enabled: !!user?.email,
         queryFn: async () => {
-            const res = await axiosSecure.get(`/singleUser?email=${user.email}`);
-            return res.data;
+            // Execute both requests in parallel
+            const [issuesRes, userRes] = await Promise.all([
+                axiosSecure.get(`/myIssues?email=${user?.email}`),
+                axiosSecure.get(`/singleUser?email=${user?.email}`)
+            ]);
+
+            return {
+                issues: issuesRes.data,
+                users: userRes.data
+            };
         }
-    })
+    });
+
+    const { issues = [], users: singUser = {} } = data;
 
     // Form state - initialize with default values or fetched data
     const [formData, setFormData] = useState({
@@ -51,8 +65,8 @@ const ProfilePage = () => {
         isPremium: singUser?.isPremium,
         isBlocked: singUser?.isBlocked,
         issueCount: singUser?.issueCount,
-        successfulReports: 18,
-        citizenScore: 85,
+        successfulReports: (singUser?.issueCount - issues.filter(i => i.status === 'Rejected').length),
+        citizenScore: (((singUser?.issueCount - issues.filter(i => i.status === 'Rejected').length)/singUser?.issueCount)*100).toFixed(2),
     });
 
     const fileInputRef = useRef(null);
@@ -413,12 +427,13 @@ const ProfilePage = () => {
             name: singUser?.name,
             email: singUser?.email,
             type: 'Premium Subscription',
-            totalPayment: singUser.totalPayment + 1000
+            totalPayment: singUser.totalPayment + 1000,
+            issueId: 1
         };
 
         try {
             const res = await axiosSecure.post('/create-checkout-session', paymentInfo);
-            console.log(res.data);
+            // console.log(res.data);
 
             Swal.fire({
                 icon: 'success',
@@ -454,13 +469,13 @@ const ProfilePage = () => {
         },
         {
             title: 'Successful Reports',
-            value: formData.successfulReports,
+            value: (singUser?.issueCount - issues.filter(i => i.status === 'Rejected').length),
             icon: <CheckCircle className="w-6 h-6" />,
             color: 'bg-green-100 text-green-600',
         },
         {
             title: 'Citizen Score',
-            value: formData.citizenScore,
+            value: (((singUser?.issueCount - issues.filter(i => i.status === 'Rejected').length)/singUser?.issueCount)*100).toFixed(2),
             icon: <Award className="w-6 h-6" />,
             color: 'bg-amber-100 text-amber-600',
         },
@@ -835,7 +850,7 @@ const ProfilePage = () => {
                                         name="newPassword"
                                         value={passwordData.newPassword}
                                         onChange={handlePasswordChange}
-                                        className="input input-bordered"
+                                        className="input input-bordered w-full"
                                     />
                                 </div>
                                 <div className="form-control">
@@ -847,7 +862,7 @@ const ProfilePage = () => {
                                         name="confirmPassword"
                                         value={passwordData.confirmPassword}
                                         onChange={handlePasswordChange}
-                                        className="input input-bordered"
+                                        className="input input-bordered w-full"
                                     />
                                 </div>
                                 <button onClick={handleUpdatePassword} className="btn bg-amber-500 hover:bg-amber-600 text-white hover:text-white border-0">
@@ -915,30 +930,6 @@ const ProfilePage = () => {
                                         <span className="text-sm text-gray-600">{benefit}</span>
                                     </div>
                                 ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Additional Features Card */}
-                    <div className="card bg-base-100 shadow-xl">
-                        <div className="card-body">
-                            <h3 className="card-title text-gray-800 mb-4">
-                                <Settings className="w-6 h-6 mr-2" />
-                                Quick Actions
-                            </h3>
-                            <div className="space-y-3">
-                                <button className="btn btn-outline w-full justify-start">
-                                    <Bell className="w-4 h-4 mr-2" />
-                                    Notification Settings
-                                </button>
-                                <button className="btn btn-outline w-full justify-start">
-                                    <Shield className="w-4 h-4 mr-2" />
-                                    Privacy Settings
-                                </button>
-                                <button className="btn btn-outline w-full justify-start">
-                                    <Star className="w-4 h-4 mr-2" />
-                                    Rate Our Service
-                                </button>
                             </div>
                         </div>
                     </div>
