@@ -1,16 +1,37 @@
-# React + Vite
+ Website name: Cityfix - A public issue reporting
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+ Admin email & password: admin123@gmail.com & Admin@123  
 
-Currently, two official plugins are available:
+ Live Site URL:  https://city-fix-assignment-11.web.app
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+ 10 bullet points about your website features:
 
-## React Compiler
+1. Role-Based Dashboard:
+Separate dashboards for Citizens, Staff, and Admins with customized views and functionalities based on user role.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+2. Issue Reporting with Photo Upload:
+Citizens can report civic issues (potholes, garbage, street lights, etc.) by uploading photos and adding detailed descriptions.
 
-## Expanding the ESLint configuration
+3. Real-Time Issue Tracking:
+Track the status of reported issues in real-time – from Pending → In Progress → Resolved with live updates.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+4. Location-Based Mapping:
+Automatically captures user location (or allows manual entry) to pin issues on a map for better coordination.
+
+5. Upvote & Boost System:
+Citizens can upvote issues they care about. Critical issues can be boosted (paid feature) for faster attention.
+
+6. Staff Assignment & Management
+Admins can assign issues to specific staff members and track their workload and resolution performance.
+
+7. Payment Integration (Premium Features)
+Secure Stripe payment integration for premium features like issue boosting, priority processing, or donations.
+
+8. Review & Rating System
+Citizens can rate and review the resolution quality after an issue is marked as resolved.
+
+9. Secure Authentication
+Firebase authentication with Google Sign-In and email/password login, ensuring secure access to all features.
+
+10. Admin Analytics Dashboard
+Admins get insights with charts and graphs showing total issues, resolved vs pending, category-wise breakdown, and staff performance.
