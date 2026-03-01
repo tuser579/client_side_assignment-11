@@ -1,701 +1,377 @@
 import React, { useState } from 'react';
 import {
-    X,
-    Download,
-    Printer,
-    Copy,
-    CheckCircle,
-    FileText,
-    Calendar,
-    CreditCard,
-    User,
-    Building,
-    Shield
+  X, Download, Copy, CheckCircle2, FileText,
+  Calendar, CreditCard, User, Building2, Shield,
+  Receipt, Banknote, Clock, Mail, Hash, Layers
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { usePDF, Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
 
-// Register fonts for better PDF styling (optional)
 Font.register({
-    family: 'Helvetica',
-    fonts: [
-        { src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-light-webfont.ttf', fontWeight: 300 },
-        { src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-regular-webfont.ttf', fontWeight: 400 },
-        { src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-medium-webfont.ttf', fontWeight: 500 },
-        { src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-bold-webfont.ttf', fontWeight: 700 },
-    ]
+  family: 'Helvetica',
+  fonts: [
+    { src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-light-webfont.ttf',   fontWeight: 300 },
+    { src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-regular-webfont.ttf', fontWeight: 400 },
+    { src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-medium-webfont.ttf',  fontWeight: 500 },
+    { src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-bold-webfont.ttf',    fontWeight: 700 },
+  ]
 });
 
-const PaymentReceiptModal = ({ payment, onClose }) => {
-    const [copied, setCopied] = useState(false);
-
-    if (!payment) return null;
-
-    // Format date
-    const formatDate = (dateString) => {
-        try {
-            const date = parseISO(dateString);
-            return {
-                full: format(date, 'MMMM dd, yyyy'),
-                time: format(date, 'hh:mm a'),
-                iso: format(date, 'yyyy-MM-dd')
-            };
-        } catch {
-            return {
-                full: dateString,
-                time: '',
-                iso: dateString
-            };
-        }
-    };
-
-    const dateInfo = formatDate(payment.paidAt);
-
-    // React PDF Document Component - Matching your modal design
-    const ReceiptPDF = () => (
-        <Document>
-            <Page size="A4" style={styles.page}>
-                {/* Header matching modal */}
-                <View style={styles.header}>
-                    <View style={styles.companySection}>
-                        <View>
-                            <Text style={styles.companyName}>CityFix</Text>
-                            <Text style={styles.companyTagline}>Public Issue Reporting</Text>
-                        </View>
-                    </View>
-
-                    <View style={styles.receiptTitleSection}>
-                        <Text style={styles.receiptTitle}>PAYMENT RECEIPT</Text>
-                        <Text style={styles.transactionId}>Transaction ID: {payment.transactionId}</Text>
-                    </View>
-
-                    <View style={styles.statusBadge}>
-                        <Text style={styles.statusText}>✓ Payment Verified & Secured</Text>
-                    </View>
-                </View>
-
-                {/* Main Content Grid - Matching your 2-column layout */}
-                <View style={styles.contentGrid}>
-                    {/* Left Column */}
-                    <View style={styles.leftColumn}>
-                        {/* Payment Information Card */}
-                        <View style={styles.card}>
-                            <View style={styles.cardHeader}>
-                                <Text style={styles.cardTitle}>PAYMENT INFORMATION</Text>
-                            </View>
-                            <View style={styles.cardBody}>
-                                <View style={styles.infoRow}>
-                                    <Text style={styles.infoLabel}>Transaction ID:</Text>
-                                    <Text style={styles.infoValue}>{payment.transactionId}</Text>
-                                </View>
-                                <View style={styles.infoRow}>
-                                    <Text style={styles.infoLabel}>Payment Type:</Text>
-                                    <Text style={styles.infoValue}>{payment.type}</Text>
-                                </View>
-                                {
-                                    payment.issueId && <View style={styles.infoRow}>
-                                        <Text style={styles.infoLabel}>Issue Id:</Text>
-                                        <Text style={styles.infoValue}>{payment.issueId}</Text>
-                                    </View>
-                                }
-                                <View style={styles.infoRow}>
-                                    <Text style={styles.infoLabel}>Payment Method:</Text>
-                                    <Text style={styles.infoValue}>Credit Card</Text>
-                                </View>
-                                <View style={styles.infoRow}>
-                                    <Text style={styles.infoLabel}>Status:</Text>
-                                    <Text style={styles.statusBadgeText}>✓ Completed</Text>
-                                </View>
-                            </View>
-                        </View>
-
-                        {/* Date & Time Card */}
-                        <View style={styles.card}>
-                            <View style={styles.cardHeader}>
-                                <Text style={styles.cardTitle}>DATE & TIME</Text>
-                            </View>
-                            <View style={styles.cardBody}>
-                                <View style={styles.infoRow}>
-                                    <Text style={styles.infoLabel}>Date:</Text>
-                                    <Text style={styles.infoValue}>{dateInfo.full}</Text>
-                                </View>
-                                <View style={styles.infoRow}>
-                                    <Text style={styles.infoLabel}>Time:</Text>
-                                    <Text style={styles.infoValue}>{dateInfo.time}</Text>
-                                </View>
-                                <View style={styles.infoRow}>
-                                    <Text style={styles.infoLabel}>Time Zone:</Text>
-                                    <Text style={styles.infoValue}>UTC+6 (BDT)</Text>
-                                </View>
-                            </View>
-                        </View>
-                    </View>
-
-                    {/* Right Column */}
-                    <View style={styles.rightColumn}>
-                        {/* Customer Information Card */}
-                        <View style={styles.card}>
-                            <View style={styles.cardHeader}>
-                                <Text style={styles.cardTitle}>CUSTOMER INFORMATION</Text>
-                            </View>
-                            <View style={styles.cardBody}>
-                                <View style={styles.infoSection}>
-                                    <Text style={styles.infoLabel}>User Id:</Text>
-                                    <Text style={styles.infoValue}>{payment?.userId || 'N/A'}</Text>
-                                </View>
-                                <View style={styles.infoSection}>
-                                    <Text style={styles.infoLabel}>Name:</Text>
-                                    <Text style={styles.infoValue}>{payment?.userName || 'N/A'}</Text>
-                                </View>
-                                <View style={styles.infoSection}>
-                                    <Text style={styles.infoLabel}>Email:</Text>
-                                    <Text style={styles.infoValue}>{payment.customerEmail || 'N/A'}</Text>
-                                </View>
-                            </View>
-                        </View>
-
-                        {/* Amount Card - Matching your modal's design */}
-                        <View style={styles.amountCard}>
-                            <View style={styles.amountHeader}>
-                                <Text style={styles.amountTitle}>Amount Paid</Text>
-                                <Text style={styles.amountValue}>{payment.amount}</Text>
-                            </View>
-                            <View style={styles.amountBreakdown}>
-                                <View style={styles.breakdownRow}>
-                                    <Text style={styles.breakdownLabel}>Subtotal:</Text>
-                                    <Text style={styles.breakdownValue}>{payment.amount}</Text>
-                                </View>
-                                <View style={styles.breakdownRow}>
-                                    <Text style={styles.breakdownLabel}>Tax(0%):</Text>
-                                    <Text style={styles.breakdownValue}>0.00</Text>
-                                </View>
-                                <View style={styles.totalRow}>
-                                    <Text style={styles.totalLabel}>TOTAL:</Text>
-                                    <Text style={styles.totalLabel}>{payment.amount}</Text>
-                                </View>
-                            </View>
-                        </View>
-                    </View>
-                </View>
-
-                {/* Footer matching modal */}
-                <View style={styles.footer}>
-                    <Text style={styles.footerText}>
-                        This receipt serves as an official record of your payment. Please keep it for your records.
-                    </Text>
-                    <Text style={styles.footerText}>
-                        For any questions regarding this payment, contact our support team at support@cityfix.com
-                        or call +8801712349876.
-                    </Text>
-                    <Text style={styles.footerNote}>
-                        This is an official digital receipt. No physical copy will be mailed.
-                        Generated on {new Date().toLocaleDateString()}
-                    </Text>
-                </View>
-            </Page>
-        </Document>
-    );
-
-    // PDF Styles matching your modal design
-    const styles = StyleSheet.create({
-        page: {
-            padding: 30,
-            fontFamily: 'Helvetica',
-            backgroundColor: '#f8fafc'
-        },
-        header: {
-            marginBottom: 25,
-            alignItems: 'center'
-        },
-        companySection: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            marginBottom: 15,
-            gap: 10
-        },
-        companyIcon: {
-            width: 40,
-            height: 40,
-            backgroundColor: '#ffffff',
-            borderRadius: 8,
-            justifyContent: 'center',
-            alignItems: 'center',
-            borderWidth: 1,
-            borderColor: '#e2e8f0'
-        },
-        buildingIcon: {
-            fontSize: 18
-        },
-        companyName: {
-            fontSize: 24,
-            fontWeight: 'bold',
-            color: '#1e293b',
-            marginBottom: 2,
-            textAlign: 'center'
-        },
-        companyTagline: {
-            fontSize: 11,
-            color: '#64748b'
-        },
-        receiptTitleSection: {
-            marginBottom: 10,
-            alignItems: 'center'
-        },
-        receiptTitle: {
-            fontSize: 20,
-            fontWeight: 'bold',
-            color: '#1e40af',
-            marginBottom: 4
-        },
-        transactionId: {
-            fontSize: 11,
-            color: '#64748b'
-        },
-        statusBadge: {
-            backgroundColor: '#d1fae5',
-            paddingHorizontal: 12,
-            paddingVertical: 6,
-            borderRadius: 20,
-            marginTop: 5
-        },
-        statusText: {
-            color: '#065f46',
-            fontSize: 10,
-            fontWeight: 'bold'
-        },
-        contentGrid: {
-            flexDirection: 'row',
-            gap: 15,
-            marginBottom: 25
-        },
-        leftColumn: {
-            flexDirection: 'col',
-            justifyContent: 'space-between',
-            gap: 3
-        },
-        rightColumn: {
-            flexDirection: 'col',
-            justifyContent: 'space-between',
-            gap: 3
-        },
-        card: {
-            backgroundColor: '#ffffff',
-            borderRadius: 12,
-            padding: 16,
-            marginBottom: 15,
-            borderWidth: 1,
-            borderColor: '#e2e8f0',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-        },
-        cardHeader: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            marginBottom: 12,
-            paddingBottom: 8,
-            borderBottomWidth: 1,
-            borderBottomColor: '#e2e8f0'
-        },
-        cardIcon: {
-            fontSize: 14,
-            marginRight: 8
-        },
-        cardTitle: {
-            fontSize: 13,
-            fontWeight: 'bold',
-            color: '#1e293b'
-        },
-        cardBody: {
-            paddingTop: 4
-        },
-        infoRow: {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            marginBottom: 8
-        },
-        infoSection: {
-            marginBottom: 10
-        },
-        infoLabel: {
-            fontSize: 10,
-            color: '#64748b',
-            marginBottom: 2
-        },
-        infoValue: {
-            fontSize: 10,
-            fontWeight: 'bold',
-            color: '#1e293b'
-        },
-        statusBadgeText: {
-            fontSize: 10,
-            fontWeight: 'bold',
-            color: '#059669'
-        },
-        amountCard: {
-            backgroundColor: '#1e40af',
-            borderRadius: 12,
-            padding: 16,
-            borderWidth: 1,
-            borderColor: '#1e3a8a',
-            boxShadow: '0 4px 6px rgba(30, 64, 175, 0.2)'
-        },
-        amountHeader: {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 15
-        },
-        amountTitle: {
-            fontSize: 16,
-            fontWeight: 'bold',
-            color: '#ffffff'
-        },
-        amountValue: {
-            fontSize: 20,
-            fontWeight: 'bold',
-            color: '#ffffff'
-        },
-        amountBreakdown: {
-            borderTopWidth: 1,
-            borderTopColor: 'rgba(255,255,255,0.3)',
-            paddingTop: 12
-        },
-        breakdownRow: {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            marginBottom: 6
-        },
-        breakdownLabel: {
-            fontSize: 10,
-            color: '#e2e8f0'
-        },
-        breakdownValue: {
-            fontSize: 10,
-            fontWeight: 'bold',
-            color: '#ffffff'
-        },
-        totalRow: {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            marginTop: 8,
-            paddingTop: 8,
-            borderTopWidth: 1,
-            borderTopColor: 'rgba(255,255,255,0.3)'
-        },
-        totalLabel: {
-            fontSize: 12,
-            fontWeight: 'bold',
-            color: '#ffffff'
-        },
-        totalAmount: {
-            fontSize: 14,
-            fontWeight: 'bold',
-            color: '#ffffff'
-        },
-        footer: {
-            marginTop: 25,
-            paddingTop: 20,
-            borderTopWidth: 1,
-            borderTopColor: '#e2e8f0',
-            textAlign: 'center'
-        },
-        footerText: {
-            fontSize: 9,
-            color: '#64748b',
-            marginBottom: 8,
-            lineHeight: 1.4
-        },
-        footerNote: {
-            fontSize: 8,
-            color: '#94a3b8',
-            marginTop: 12,
-            fontStyle: 'italic'
-        }
-    });
-
-    // Use PDF hook
-    const [instance, updateInstance] = usePDF({ document: <ReceiptPDF /> });
-
-    // Copy to clipboard
-    const copyToClipboard = async () => {
-        const receiptText = `
-Transaction ID: ${payment.transactionId}
-Date: ${dateInfo.full}
-Type: ${payment.type}
-Amount: ৳${payment.amount}
-Status: Completed
-        `;
-
-        try {
-            await navigator.clipboard.writeText(receiptText);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        } catch (error) {
-            console.error('Failed to copy:', error);
-        }
-    };
-
-    // Handle PDF download
-    const handleDownloadPDF = () => {
-        if (instance.url) {
-            const link = document.createElement('a');
-            link.href = instance.url;
-            link.download = `Payment-Receipt-${payment.transactionId}.pdf`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-    };
-
-
-    return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-            <div className="bg-white rounded-2xl max-w-4xl w-full my-8 shadow-2xl">
-                {/* Header */}
-                <div className="bg-white border-b border-gray-200 rounded-t-2xl pt-150 p-6 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                            <FileText className="w-5 h-5 text-blue-600" />
-                        </div>
-                        <div>
-                            <h2 className="text-2xl font-bold text-gray-900">Payment Receipt</h2>
-                            <p className="text-gray-600">Transaction ID: {payment.transactionId}</p>
-                        </div>
-                    </div>
-                    <button
-                        onClick={onClose}
-                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors border hover:border-red-200"
-                        title="Close"
-                    >
-                        <X className="w-5 h-5 text-gray-600 hover:text-red-500" />
-                    </button>
-                </div>
-
-                {/* Receipt Content */}
-                <div className="p-6">
-                    {/* Action Buttons */}
-                    <div className="flex flex-wrap gap-3 mb-8">
-                        <button
-                            onClick={handleDownloadPDF}
-                            disabled={!instance.url || instance.loading}
-                            className="px-4 py-2 bg-linear-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-md hover:shadow-lg"
-                        >
-                            {instance.loading ? (
-                                <>
-                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                    Generating PDF...
-                                </>
-                            ) : (
-                                <>
-                                    <Download className="w-4 h-4" />
-                                    Download PDF
-                                </>
-                            )}
-                        </button>
-
-
-                        <button
-                            onClick={copyToClipboard}
-                            className={`px-4 py-2 border rounded-lg transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow ${copied
-                                ? 'border-green-500 bg-green-50 text-green-700 hover:bg-green-100'
-                                : 'border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'
-                                }`}
-                        >
-                            {copied ? (
-                                <>
-                                    <CheckCircle className="w-4 h-4" />
-                                    Copied!
-                                </>
-                            ) : (
-                                <>
-                                    <Copy className="w-4 h-4" />
-                                    Copy Details
-                                </>
-                            )}
-                        </button>
-                    </div>
-
-                    {/* Display receipt preview - This matches the PDF design */}
-                    <div id="receipt-content" className="bg-linear-to-br from-gray-50 to-blue-50 rounded-2xl p-8 mb-6 border border-blue-100 shadow-inner">
-                        {/* Company Header */}
-                        <div className="text-center mb-8">
-                            <div className="flex items-center justify-center gap-4 mb-4">
-                                <div className="w-14 h-14 bg-white rounded-xl flex items-center justify-center shadow-lg border border-blue-200">
-                                    <Building className="w-7 h-7 text-blue-600" />
-                                </div>
-                                <div>
-                                    <h1 className="text-3xl font-bold text-gray-900">CityFix</h1>
-                                    <p className="text-gray-600 text-sm">Public Issue Reporting</p>
-                                </div>
-                            </div>
-                            <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-full border border-green-200">
-                                <Shield className="w-4 h-4" />
-                                <span className="font-medium text-sm">Payment Verified & Secured</span>
-                            </div>
-                        </div>
-
-                        {/* Grid Layout */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {/* Left Column */}
-                            <div className="flex flex-col justify-between">
-                                {/* Payment Information */}
-                                <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
-                                    <div className="flex items-center gap-3 mb-4 pb-3 border-b border-gray-200">
-                                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                                            <CreditCard className="w-4 h-4 text-blue-600" />
-                                        </div>
-                                        <h3 className="text-lg font-bold text-gray-900">Payment Information</h3>
-                                    </div>
-                                    <div className="space-y-3">
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-gray-600 text-sm">Transaction ID:</span>
-                                            <span className="font-mono text-sm font-bold text-gray-900 bg-gray-100 px-2 py-1 rounded">
-                                                {payment.transactionId}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-gray-600 text-sm">Payment Type:</span>
-                                            <span className="font-bold text-gray-900">{payment.type}</span>
-                                        </div>
-                                        {payment.issueId &&
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-gray-600 text-sm">Issue Id:</span>
-                                                <span className="font-bold text-gray-900">{payment.issueId}</span>
-                                            </div>
-                                        }
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-gray-600 text-sm">Payment Method:</span>
-                                            <span className="font-bold text-gray-900">Credit Card</span>
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-gray-600 text-sm">Status:</span>
-                                            <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium border border-green-200">
-                                                <CheckCircle className="w-3 h-3" />
-                                                Completed
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Date & Time */}
-                                <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
-                                    <div className="flex items-center gap-3 mb-4 pb-3 border-b border-gray-200">
-                                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                                            <Calendar className="w-4 h-4 text-blue-600" />
-                                        </div>
-                                        <h3 className="text-lg font-bold text-gray-900">Date & Time</h3>
-                                    </div>
-                                    <div className="space-y-3">
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600 text-sm">Date:</span>
-                                            <span className="font-bold text-gray-900">{dateInfo.full}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600 text-sm">Time:</span>
-                                            <span className="font-bold text-gray-900">{dateInfo.time}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600 text-sm">Time Zone:</span>
-                                            <span className="font-bold text-gray-900">UTC+6 (BDT)</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Right Column */}
-                            <div className="flex flex-col justify-between gap-3">
-                                {/* Customer Information */}
-                                <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
-                                    <div className="flex items-center gap-3 mb-4 pb-3 border-b border-gray-200">
-                                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                                            <User className="w-4 h-4 text-blue-600" />
-                                        </div>
-                                        <h3 className="text-lg font-bold text-gray-900">Customer Information</h3>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <div>
-                                            <p className="text-gray-600 text-sm mb-1">User Id</p>
-                                            <p className="font-bold text-gray-900 text-lg">{payment?.userId || 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-gray-600 text-sm mb-1">Name</p>
-                                            <p className="font-bold text-gray-900 text-lg">{payment?.userName || 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-gray-600 text-sm mb-1">Email</p>
-                                            <p className="font-bold text-gray-900">{payment.customerEmail || 'N/A'}</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Amount Paid */}
-                                <div className="bg-linear-to-br from-blue-600 to-indigo-600 rounded-xl p-6 shadow-lg border border-blue-500">
-                                    <div className="flex justify-between items-center mb-6">
-                                        <h3 className="text-xl font-bold text-white">Amount Paid</h3>
-                                        <span className="text-3xl font-bold text-white">৳{payment.amount}</span>
-                                    </div>
-                                    <div className="pt-4 border-t border-blue-500/30">
-                                        <div className="flex justify-between text-blue-100 mb-2">
-                                            <span className="text-sm">Subtotal</span>
-                                            <span className="text-sm">৳{payment.amount}</span>
-                                        </div>
-                                        <div className="flex justify-between text-blue-100 mb-2">
-                                            <span className="text-sm">Tax (0%)</span>
-                                            <span className="text-sm">৳0.00</span>
-                                        </div>
-                                        <div className="flex justify-between font-bold text-lg mt-3 pt-3 border-t border-blue-500/30">
-                                            <span className="text-white">TOTAL</span>
-                                            <span className="text-white">৳{payment.amount}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Footer Notes */}
-                        <div className="mt-8 pt-6 border-t border-gray-300">
-                            <div className="text-center text-gray-600 text-sm">
-                                <p className="mb-2">
-                                    This receipt serves as an official record of your payment. Please keep it for your records.
-                                </p>
-                                <p>
-                                    For any questions regarding this payment, contact our support team at
-                                    <span className="font-medium text-blue-600"> support@cityfix.com</span> or call
-                                    <span className="font-medium text-blue-600"> +8801712349876</span>.
-                                </p>
-                                <p className="mt-4 text-xs text-gray-500 italic">
-                                    This is an official digital receipt. No physical copy will be mailed.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Modal Footer */}
-                <div className="border-t border-gray-200 p-6 bg-gray-50 rounded-b-2xl">
-                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                        <p className="text-gray-600 text-sm">
-                            Need help? Contact support: support@cityfix.com | +8801712349876
-                        </p>
-                        <div className="flex gap-3">
-                            <button
-                                onClick={handleDownloadPDF}
-                                disabled={!instance.url || instance.loading}
-                                className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 text-sm font-medium"
-                            >
-                                {instance.loading ? 'Generating...' : 'Download PDF'}
-                            </button>
-                            <button
-                                onClick={onClose}
-                                className="px-5 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium"
-                            >
-                                Close
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+/* ─── shared helpers ────────────────────────────────── */
+const SectionCard = ({ icon: Icon, iconBg, iconColor, title, children }) => (
+  <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+    <div className="h-0.5 bg-linear-to-r from-blue-500 to-purple-500" />
+    <div className="p-4 sm:p-5">
+      <div className="flex items-center gap-2.5 mb-4 pb-3 border-b border-gray-100 dark:border-gray-700">
+        <div className={`w-8 h-8 ${iconBg} rounded-lg flex items-center justify-center shrink-0`}>
+          <Icon className={`w-4 h-4 ${iconColor}`} />
         </div>
-    );
+        <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wide">{title}</h3>
+      </div>
+      {children}
+    </div>
+  </div>
+);
+
+const InfoRow = ({ label, value, mono = false, badge = false, badgeCls = '' }) => (
+  <div className="flex items-center justify-between gap-3 py-2 border-b border-gray-50 dark:border-gray-700/50 last:border-0">
+    <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">{label}</span>
+    {badge ? (
+      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold border ${badgeCls}`}>
+        <CheckCircle2 className="w-3 h-3" /> {value}
+      </span>
+    ) : (
+      <span className={`text-xs font-bold text-gray-900 dark:text-white text-right ${mono ? 'font-mono bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-lg' : ''}`}>
+        {value}
+      </span>
+    )}
+  </div>
+);
+
+/* ─── PDF styles ─────────────────────────────────────── */
+const pdfStyles = StyleSheet.create({
+  page:            { padding: 32, fontFamily: 'Helvetica', backgroundColor: '#f8fafc' },
+  header:          { alignItems: 'center', marginBottom: 24 },
+  companyRow:      { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 10 },
+  companyName:     { fontSize: 22, fontWeight: 'bold', color: '#1e293b' },
+  companyTag:      { fontSize: 10, color: '#64748b' },
+  receiptTitle:    { fontSize: 17, fontWeight: 'bold', color: '#1d4ed8', marginBottom: 4 },
+  txnId:           { fontSize: 10, color: '#64748b', marginBottom: 8 },
+  statusPill:      { backgroundColor: '#d1fae5', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
+  statusTxt:       { fontSize: 9, fontWeight: 'bold', color: '#065f46' },
+  grid:            { flexDirection: 'row', gap: 14, marginBottom: 24 },
+  col:             { flex: 1, gap: 14 },
+  card:            { backgroundColor: '#ffffff', borderRadius: 10, padding: 14, borderWidth: 1, borderColor: '#e2e8f0' },
+  cardTitle:       { fontSize: 11, fontWeight: 'bold', color: '#1e293b', marginBottom: 10, paddingBottom: 6, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
+  row:             { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 7 },
+  lbl:             { fontSize: 9, color: '#64748b' },
+  val:             { fontSize: 9, fontWeight: 'bold', color: '#1e293b' },
+  green:           { fontSize: 9, fontWeight: 'bold', color: '#059669' },
+  amtCard:         { backgroundColor: '#1d4ed8', borderRadius: 10, padding: 14 },
+  amtHeader:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  amtTitle:        { fontSize: 13, fontWeight: 'bold', color: '#fff' },
+  amtVal:          { fontSize: 18, fontWeight: 'bold', color: '#fff' },
+  divider:         { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.25)', paddingTop: 10 },
+  amtRow:          { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
+  amtLbl:          { fontSize: 9, color: '#bfdbfe' },
+  amtSubVal:       { fontSize: 9, color: '#fff', fontWeight: 'bold' },
+  totalRow:        { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.25)', paddingTop: 8, marginTop: 6 },
+  totalTxt:        { fontSize: 11, fontWeight: 'bold', color: '#fff' },
+  footer:          { marginTop: 24, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#e2e8f0' },
+  footerTxt:       { fontSize: 8, color: '#64748b', marginBottom: 5, textAlign: 'center', lineHeight: 1.5 },
+  footerNote:      { fontSize: 7, color: '#94a3b8', marginTop: 8, textAlign: 'center', fontStyle: 'italic' },
+});
+
+/* ─── Main Component ─────────────────────────────────── */
+const PaymentReceiptModal = ({ payment, onClose }) => {
+  const [copied, setCopied] = useState(false);
+  if (!payment) return null;
+
+  const formatDate = (ds) => {
+    try {
+      const d = parseISO(ds);
+      return { full: format(d, 'MMMM dd, yyyy'), time: format(d, 'hh:mm a') };
+    } catch { return { full: ds, time: '' }; }
+  };
+  const dateInfo = formatDate(payment.paidAt);
+
+  /* ── PDF Doc ── */
+  const ReceiptPDF = () => (
+    <Document>
+      <Page size="A4" style={pdfStyles.page}>
+        <View style={pdfStyles.header}>
+          <View style={pdfStyles.companyRow}>
+            <View>
+              <Text style={pdfStyles.companyName}>CityFix</Text>
+              <Text style={pdfStyles.companyTag}>Public Issue Reporting</Text>
+            </View>
+          </View>
+          <Text style={pdfStyles.receiptTitle}>PAYMENT RECEIPT</Text>
+          <Text style={pdfStyles.txnId}>Transaction ID: {payment.transactionId}</Text>
+          <View style={pdfStyles.statusPill}><Text style={pdfStyles.statusTxt}>✓ Payment Verified & Secured</Text></View>
+        </View>
+
+        <View style={pdfStyles.grid}>
+          <View style={pdfStyles.col}>
+            <View style={pdfStyles.card}>
+              <Text style={pdfStyles.cardTitle}>PAYMENT INFORMATION</Text>
+              <View style={pdfStyles.row}><Text style={pdfStyles.lbl}>Transaction ID</Text><Text style={pdfStyles.val}>{payment.transactionId}</Text></View>
+              <View style={pdfStyles.row}><Text style={pdfStyles.lbl}>Payment Type</Text><Text style={pdfStyles.val}>{payment.type}</Text></View>
+              {payment.issueId && <View style={pdfStyles.row}><Text style={pdfStyles.lbl}>Issue ID</Text><Text style={pdfStyles.val}>{payment.issueId}</Text></View>}
+              <View style={pdfStyles.row}><Text style={pdfStyles.lbl}>Method</Text><Text style={pdfStyles.val}>Credit Card</Text></View>
+              <View style={pdfStyles.row}><Text style={pdfStyles.lbl}>Status</Text><Text style={pdfStyles.green}>✓ Completed</Text></View>
+            </View>
+            <View style={pdfStyles.card}>
+              <Text style={pdfStyles.cardTitle}>DATE & TIME</Text>
+              <View style={pdfStyles.row}><Text style={pdfStyles.lbl}>Date</Text><Text style={pdfStyles.val}>{dateInfo.full}</Text></View>
+              <View style={pdfStyles.row}><Text style={pdfStyles.lbl}>Time</Text><Text style={pdfStyles.val}>{dateInfo.time}</Text></View>
+              <View style={pdfStyles.row}><Text style={pdfStyles.lbl}>Time Zone</Text><Text style={pdfStyles.val}>UTC+6 (BDT)</Text></View>
+            </View>
+          </View>
+
+          <View style={pdfStyles.col}>
+            <View style={pdfStyles.card}>
+              <Text style={pdfStyles.cardTitle}>CUSTOMER INFORMATION</Text>
+              <View style={pdfStyles.row}><Text style={pdfStyles.lbl}>User ID</Text><Text style={pdfStyles.val}>{payment?.userId || 'N/A'}</Text></View>
+              <View style={pdfStyles.row}><Text style={pdfStyles.lbl}>Name</Text><Text style={pdfStyles.val}>{payment?.userName || 'N/A'}</Text></View>
+              <View style={pdfStyles.row}><Text style={pdfStyles.lbl}>Email</Text><Text style={pdfStyles.val}>{payment.customerEmail || 'N/A'}</Text></View>
+            </View>
+            <View style={pdfStyles.amtCard}>
+              <View style={pdfStyles.amtHeader}>
+                <Text style={pdfStyles.amtTitle}>Amount Paid</Text>
+                <Text style={pdfStyles.amtVal}>৳{payment.amount}</Text>
+              </View>
+              <View style={pdfStyles.divider}>
+                <View style={pdfStyles.amtRow}><Text style={pdfStyles.amtLbl}>Subtotal</Text><Text style={pdfStyles.amtSubVal}>৳{payment.amount}</Text></View>
+                <View style={pdfStyles.amtRow}><Text style={pdfStyles.amtLbl}>Tax (0%)</Text><Text style={pdfStyles.amtSubVal}>৳0.00</Text></View>
+              </View>
+              <View style={pdfStyles.totalRow}>
+                <Text style={pdfStyles.totalTxt}>TOTAL</Text>
+                <Text style={pdfStyles.totalTxt}>৳{payment.amount}</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        <View style={pdfStyles.footer}>
+          <Text style={pdfStyles.footerTxt}>This receipt serves as an official record of your payment. Please keep it for your records.</Text>
+          <Text style={pdfStyles.footerTxt}>For questions, contact support@cityfix.com or call +8801712349876.</Text>
+          <Text style={pdfStyles.footerNote}>Official digital receipt. No physical copy will be mailed. Generated on {new Date().toLocaleDateString()}</Text>
+        </View>
+      </Page>
+    </Document>
+  );
+
+  const [instance] = usePDF({ document: <ReceiptPDF /> });
+
+  const handleDownloadPDF = () => {
+    if (!instance.url) return;
+    const a = document.createElement('a');
+    a.href = instance.url;
+    a.download = `Receipt-${payment.transactionId}.pdf`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  };
+
+  const copyToClipboard = async () => {
+    const txt = `CityFix Payment Receipt\nTransaction ID: ${payment.transactionId}\nDate: ${dateInfo.full} ${dateInfo.time}\nType: ${payment.type}\nAmount: ৳${payment.amount}\nStatus: Completed`;
+    try { await navigator.clipboard.writeText(txt); setCopied(true); setTimeout(() => setCopied(false), 2000); }
+    catch (e) { console.error(e); }
+  };
+
+  /* ── Render ── */
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center z-50 p-3 sm:p-5 overflow-y-auto">
+      <div
+        className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-4xl my-4 sm:my-8 shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* ── Top gradient bar ── */}
+        <div className="h-1.5 bg-linear-to-r from-blue-500 via-purple-500 to-fuchsia-500" />
+
+        {/* ── Modal Header ─────────────────────────── */}
+        <div className="flex items-center justify-between gap-3 p-4 sm:p-5 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-blue-50 dark:bg-blue-900/30 rounded-xl flex items-center justify-center border border-blue-100 dark:border-blue-800">
+              <Receipt className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">Payment Receipt</h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">{payment.transactionId}</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 dark:hover:text-red-400 hover:border-red-200 dark:hover:border-red-800 transition-all"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* ── Body ─────────────────────────────────── */}
+        <div className="p-4 sm:p-6">
+
+          {/* Action buttons */}
+          <div className="flex flex-wrap gap-2.5 mb-6">
+            <button
+              onClick={handleDownloadPDF}
+              disabled={!instance.url || instance.loading}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-linear-to-r from-blue-600 to-purple-600 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+            >
+              {instance.loading
+                ? <><div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Generating…</>
+                : <><Download className="w-3.5 h-3.5" /> Download PDF</>
+              }
+            </button>
+
+            <button
+              onClick={copyToClipboard}
+              className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl border transition-all hover:scale-[1.02] ${
+                copied
+                  ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400'
+                  : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-500'
+              }`}
+            >
+              {copied
+                ? <><CheckCircle2 className="w-3.5 h-3.5" /> Copied!</>
+                : <><Copy className="w-3.5 h-3.5" /> Copy Details</>
+              }
+            </button>
+          </div>
+
+          {/* ── Receipt Preview ───────────────────── */}
+          <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
+
+            {/* Company header */}
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-white dark:bg-gray-800 rounded-xl flex items-center justify-center shadow-md border border-gray-200 dark:border-gray-700">
+                  <Building2 className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div className="text-left">
+                  <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">CityFix</h1>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Public Issue Reporting</p>
+                </div>
+              </div>
+
+              <div className="flex flex-col items-center gap-2">
+                <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Payment Receipt</p>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 rounded-xl text-xs font-bold">
+                  <Shield className="w-3.5 h-3.5" /> Payment Verified & Secured
+                </div>
+              </div>
+            </div>
+
+            {/* 2-col grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
+
+              {/* Left col */}
+              <div className="space-y-4">
+                <SectionCard icon={CreditCard} iconBg="bg-blue-50 dark:bg-blue-900/30" iconColor="text-blue-600 dark:text-blue-400" title="Payment Information">
+                  <InfoRow label="TXN ID" value={payment.transactionId} mono />
+                  <InfoRow label="Payment Type"   value={payment.type} />
+                  {payment.issueId && <InfoRow label="Issue ID" value={payment.issueId} />}
+                  <InfoRow label="Method" value="Credit Card" />
+                  <InfoRow label="Status" value="Completed" badge badgeCls="bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400" />
+                </SectionCard>
+
+                <SectionCard icon={Calendar} iconBg="bg-violet-50 dark:bg-violet-900/30" iconColor="text-violet-600 dark:text-violet-400" title="Date & Time">
+                  <InfoRow label="Date"      value={dateInfo.full} />
+                  <InfoRow label="Time"      value={dateInfo.time} />
+                  <InfoRow label="Time Zone" value="UTC+6 (BDT)" />
+                </SectionCard>
+              </div>
+
+              {/* Right col */}
+              <div className="space-y-4">
+                <SectionCard icon={User} iconBg="bg-fuchsia-50 dark:bg-fuchsia-900/30" iconColor="text-fuchsia-600 dark:text-fuchsia-400" title="Customer Information">
+                  <InfoRow label="User ID" value={payment?.userId       || 'N/A'} mono />
+                  <InfoRow label="Name"    value={payment?.userName     || 'N/A'} />
+                  <InfoRow label="Email"   value={payment?.customerEmail || 'N/A'} />
+                </SectionCard>
+
+                {/* Amount card */}
+                <div className="relative overflow-hidden bg-linear-to-br from-blue-600 via-indigo-600 to-purple-700 rounded-xl p-4 sm:p-5 shadow-xl shadow-blue-500/20 border border-blue-500/20">
+                  {/* ambient glow */}
+                  <div className="pointer-events-none absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/5 blur-2xl" />
+                  <div className="pointer-events-none absolute -bottom-6 -left-6 w-24 h-24 rounded-full bg-purple-300/10 blur-2xl" />
+
+                  {/* Amount header */}
+                  <div className="flex items-start justify-between gap-3 mb-5">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-widest text-white/60 mb-1">Amount Paid</p>
+                      <p className="text-4xl font-black text-white tracking-tight">৳{payment.amount?.toLocaleString()}</p>
+                    </div>
+                    <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center border border-white/20 shrink-0">
+                      <Banknote className="w-5 h-5 text-white" />
+                    </div>
+                  </div>
+
+                  {/* Breakdown */}
+                  <div className="space-y-2.5 border-t border-white/20 pt-4">
+                    {[
+                      { l: 'Subtotal', v: `৳${payment.amount}` },
+                      { l: 'Tax (0%)', v: '৳0.00' },
+                    ].map(({ l, v }) => (
+                      <div key={l} className="flex justify-between">
+                        <span className="text-xs text-white/60">{l}</span>
+                        <span className="text-xs font-bold text-white/80">{v}</span>
+                      </div>
+                    ))}
+                    <div className="flex justify-between pt-2.5 border-t border-white/20">
+                      <span className="text-sm font-black text-white">TOTAL</span>
+                      <span className="text-sm font-black text-white">৳{payment.amount?.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer note */}
+            <div className="pt-5 border-t border-gray-200 dark:border-gray-700 text-center space-y-1">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                This receipt serves as an official record. Please keep it for your records.
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Questions? Contact{' '}
+                <a href="mailto:support@cityfix.com" className="text-blue-600 dark:text-blue-400 font-semibold hover:underline">support@cityfix.com</a>
+                {' '}or{' '}
+                <a href="tel:+8801712349876" className="text-blue-600 dark:text-blue-400 font-semibold hover:underline">+8801712349876</a>
+              </p>
+              <p className="text-[11px] text-gray-400 dark:text-gray-500 italic">
+                Official digital receipt. No physical copy will be mailed.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Modal Footer ─────────────────────────── */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700">
+          <p className="text-xs text-gray-500 dark:text-gray-400 text-center sm:text-left">
+            Need help?{' '}
+            <a href="mailto:support@cityfix.com" className="text-blue-600 dark:text-blue-400 font-semibold hover:underline">support@cityfix.com</a>
+            {' '}·{' '}
+            <a href="tel:+8801712349876" className="text-blue-600 dark:text-blue-400 font-semibold hover:underline">+8801712349876</a>
+          </p>
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={handleDownloadPDF}
+              disabled={!instance.url || instance.loading}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-linear-to-r from-blue-600 to-purple-600 text-white text-xs font-bold rounded-xl hover:scale-[1.02] transition-all disabled:opacity-50 disabled:hover:scale-100 shadow-md"
+            >
+              <Download className="w-3.5 h-3.5" />
+              {instance.loading ? 'Generating…' : 'Download PDF'}
+            </button>
+            <button
+              onClick={onClose}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-xs font-bold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+            >
+              <X className="w-3.5 h-3.5" /> Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default PaymentReceiptModal;

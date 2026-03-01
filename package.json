@@ -16,6 +16,8 @@
     "@mui/icons-material": "^7.3.7",
     "@mui/material": "^7.3.7",
     "@mui/x-data-grid": "^8.27.0",
+    "@rajace2005/theme-changer": "^1.0.11",
+    "@rbnd/react-dark-mode": "^2.0.2",
     "@react-pdf/renderer": "^4.3.2",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",

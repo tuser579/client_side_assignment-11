@@ -1,242 +1,227 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
-  BarChart3,
-  Clock,
-  CheckCircle,
-  AlertTriangle,
-  TrendingUp,
-  DollarSign,
-  AlertCircle,
-  Wrench,
-  XCircle,
-  Lock
+  BarChart3, Clock, CheckCircle, AlertTriangle,
+  TrendingUp, DollarSign, AlertCircle, Wrench,
+  XCircle, Lock, Phone, Mail, Zap
 } from 'lucide-react';
 import { Bar } from "react-chartjs-2";
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, } from "chart.js";
+import {
+  Chart as ChartJS, CategoryScale, LinearScale,
+  BarElement, Title, Tooltip, Legend,
+} from "chart.js";
 import useAxiosSecure from '../../hooks/useAxiosSecure';
 import useAuth from '../../hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { NavLink } from 'react-router';
+import CitizenDashboardSkeleton from '../../Components/CitizenDashboardSkeleton';
+
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const CitizenDashboard = () => {
-
   const axiosSecure = useAxiosSecure();
   const { user } = useAuth();
 
-  const {
-    data = {},
-  } = useQuery({
+  const { data = {}, isLoading } = useQuery({
     queryKey: ['userData', user?.email],
     enabled: !!user?.email,
     queryFn: async () => {
-      // Execute both requests in parallel
       const [issuesRes, userRes] = await Promise.all([
         axiosSecure.get(`/myIssues?email=${user?.email}`),
         axiosSecure.get(`/singleUser?email=${user?.email}`)
       ]);
-
-      return {
-        issues: issuesRes.data,
-        users: userRes.data
-      };
+      return { issues: issuesRes.data, users: userRes.data };
     }
   });
 
   const { issues = [], users: singUser = {} } = data;
 
+  const statCards = [
+    { title: 'Total Issues',  value: issues.length,                                              icon: BarChart3,      accent: 'from-blue-500 to-cyan-400',    glow: 'shadow-blue-500/20',   iconBg: 'bg-blue-50 dark:bg-blue-900/30',   iconColor: 'text-blue-500 dark:text-blue-400' },
+    { title: 'Pending',       value: issues.filter(i => i.status === 'Pending').length,          icon: Clock,          accent: 'from-yellow-500 to-amber-400', glow: 'shadow-yellow-500/20', iconBg: 'bg-yellow-50 dark:bg-yellow-900/30',iconColor: 'text-yellow-500 dark:text-yellow-400' },
+    { title: 'In-Progress',   value: issues.filter(i => i.status === 'In-Progress').length,     icon: AlertTriangle,  accent: 'from-violet-500 to-purple-400',glow: 'shadow-violet-500/20', iconBg: 'bg-violet-50 dark:bg-violet-900/30',iconColor: 'text-violet-500 dark:text-violet-400' },
+    { title: 'Working',       value: issues.filter(i => i.status === 'Working').length,          icon: Wrench,         accent: 'from-orange-500 to-amber-400', glow: 'shadow-orange-500/20', iconBg: 'bg-orange-50 dark:bg-orange-900/30',iconColor: 'text-orange-500 dark:text-orange-400' },
+    { title: 'Resolved',      value: issues.filter(i => i.status === 'Resolved').length,        icon: CheckCircle,    accent: 'from-emerald-500 to-teal-400', glow: 'shadow-emerald-500/20',iconBg: 'bg-emerald-50 dark:bg-emerald-900/30',iconColor: 'text-emerald-500 dark:text-emerald-400' },
+    { title: 'Closed',        value: issues.filter(i => i.status === 'Closed').length,          icon: Lock,           accent: 'from-gray-500 to-gray-400',   glow: 'shadow-gray-500/20',   iconBg: 'bg-gray-100 dark:bg-gray-700/50',   iconColor: 'text-gray-500 dark:text-gray-400' },
+    { title: 'Rejected',      value: issues.filter(i => i.status === 'Rejected').length,        icon: XCircle,        accent: 'from-red-500 to-pink-400',    glow: 'shadow-red-500/20',    iconBg: 'bg-red-50 dark:bg-red-900/30',     iconColor: 'text-red-500 dark:text-red-400' },
+  ];
+
   const chartData = {
-    // labels: ["Total Issues", "Pending Issues", "In Progress Issues", "Resolved Issues", "Total Payments",],
-    labels: ["Total Issues", "Pending Issues", "In-Progress Issues", "Resolved Issues",],
-    datasets: [
-      {
-        label: "Dashboard Stats",
-
-        data: [
-          // dashboardStats.totalIssues,
-          (issues.length),
-          // dashboardStats.pendingIssues,
-          (issues.filter(issue => issue.status === "Pending"))?.length,
-          // dashboardStats.inProgressIssues,
-          (issues.filter(issue => issue.status === "In-Progress"))?.length,
-          // dashboardStats.resolvedIssues, 
-          issues.filter(i => i.status === 'Resolved').length,
-          // dashboardStats.totalPayments,
-          // (singUser?.totalPayment),
-        ],
-
-        backgroundColor: [
-          "#FF6384", // pink 
-          "#36A2EB", // blue 
-          "#FFCE56", // yellow 
-          "#4BC0C0", // teal 
-          "#9966FF", // purple 
-        ],
-      },
-    ],
+    labels: ['Total', 'Pending', 'In-Progress', 'Resolved'],
+    datasets: [{
+      label: 'Issues',
+      data: [
+        issues.length,
+        issues.filter(i => i.status === 'Pending').length,
+        issues.filter(i => i.status === 'In-Progress').length,
+        issues.filter(i => i.status === 'Resolved').length,
+      ],
+      backgroundColor: [
+        'rgba(59,130,246,0.8)',
+        'rgba(234,179,8,0.8)',
+        'rgba(139,92,246,0.8)',
+        'rgba(16,185,129,0.8)',
+      ],
+      borderRadius: 10,
+      borderSkipped: false,
+    }],
   };
 
   const chartOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
-      legend: {
-        display: false,
-      },
+      legend: { display: false },
       tooltip: {
-        enabled: true,
-        callbacks: {
-          label: function (context) {
-            let label = context.dataset.label || "";
-            let value = context.raw;
-            return `${label}: ${value}`;
-          },
-        },
+        backgroundColor: 'rgba(17,24,39,0.95)',
+        titleColor: '#fff',
+        bodyColor: '#9ca3af',
+        borderColor: 'rgba(255,255,255,0.1)',
+        borderWidth: 1,
+        padding: 12,
+        cornerRadius: 10,
+      },
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: { color: '#9ca3af', font: { size: 12, weight: '600' } },
+        border: { display: false },
+      },
+      y: {
+        grid: { color: 'rgba(156,163,175,0.1)', drawBorder: false },
+        ticks: { color: '#9ca3af', font: { size: 12 }, stepSize: 1 },
+        border: { display: false },
+        beginAtZero: true,
       },
     },
   };
 
-  const StatCard = ({ title, value, icon: Icon, color }) => (
-    <div className="card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-300">
-      <div className="card-body p-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</p>
-            <p className="text-2xl font-bold mt-2">{value}</p>
-          </div>
-          <div className={`p-3 rounded-full ${color} bg-opacity-10`}>
-            <Icon className={`w-8 h-8 ${color.replace('text-', 'text-')}`} />
-          </div>
-        </div>
-      </div>
-    </div>
+  if (isLoading) return (
+   <CitizenDashboardSkeleton></CitizenDashboardSkeleton>
   );
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-4 md:p-8" >
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 lg:p-8 transition-colors duration-300">
 
-      {/* Blocked singleUser Warning */}
+      {/* ── Blocked Warning ─────────────────────────────── */}
       {singUser.isBlocked && (
-        <div className="mb-6">
-          <div className="alert alert-error shadow-lg">
-            <AlertCircle className="w-6 h-6" />
-            <div>
-              <h3 className="font-bold">Account Blocked</h3>
-              <div className="text-xs">
-                Your account has been temporarily blocked by the administration.
-                Please contact the authorities at{' '}
-                <a href="tel:+8809609333222" className="font-semibold underline">
-                  +880 9609 333222
-                </a>{' '}
-                or email{' '}
-                <a href="mailto:support@infra.gov" className="font-semibold underline">
-                  support@infra.gov
-                </a>
-              </div>
-            </div>
+        <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-bold text-red-700 dark:text-red-400 text-sm">Account Blocked</p>
+            <p className="text-red-600 dark:text-red-300 text-xs mt-0.5">
+              Your account has been temporarily blocked. Contact{' '}
+              <a href="tel:+8809609333222" className="underline font-semibold">+880 9609 333222</a>
+              {' '}or{' '}
+              <a href="mailto:support@infra.gov" className="underline font-semibold">support@infra.gov</a>
+            </p>
           </div>
         </div>
       )}
 
-      {/* Header */}
-      < div className="mb-8" >
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className='mx-auto'>
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white">
-              Account Information
+      {/* ── Header ──────────────────────────────────────── */}
+      <div className="mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="flex justify-center sm:justify-start text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">
+              Welcome back,{' '}
+              <span className="text-transparent bg-clip-text bg-linear-to-r from-blue-600 to-purple-600">
+                {singUser?.name?.split(' ')[0] || 'Citizen'} 👋
+              </span>
             </h1>
-            <p className="text-gray-600 dark:text-gray-300 mt-2">
+            <p className="flex justify-center sm:justify-start text-gray-500 dark:text-gray-400 mt-1 text-sm sm:text-base">
               Track and manage your infrastructure reports
             </p>
           </div>
 
+          <NavLink
+            to="/dashboard/reportIssue"
+            className="flex justify-center sm:justify-start gap-2 px-3 py-2.5 bg-linear-to-r items-center from-blue-600 to-purple-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.02] transition-all duration-200"
+          >
+            <Zap className="w-4 h-4" /> Report Issue
+          </NavLink>
         </div>
-      </div >
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-7">
-        <StatCard
-          title="Total Issues"
-          value={issues.length}
-          icon={BarChart3}
-          color="text-blue-500"
-        />
-        <StatCard
-          title="Pending"
-          value={(issues.filter(issue => issue.status === "Pending"))?.length}
-          icon={Clock}
-          color="text-yellow-500"
-        />
-        <StatCard
-          title="In-Progress"
-          value={(issues.filter(issue => issue.status === "In-Progress"))?.length}
-          icon={AlertTriangle}
-          color="text-purple-500"
-        />
-        <StatCard
-          title="Working"
-          value={(issues.filter(issue => issue.status === "Working"))?.length}
-          icon={Wrench}
-          color="text-orange-500"
-        />
-        <StatCard
-          title="Resolved"
-          value={(issues.filter(issue => issue.status === "Resolved"))?.length}
-          icon={CheckCircle}
-          color="text-green-500"
-        />
-        <StatCard
-          title="Closed"
-          value={(issues.filter(issue => issue.status === "Closed"))?.length}
-          icon={Lock}
-          color="text-gray-500"
-        />
-        <StatCard
-          title="Rejected"
-          value={(issues.filter(issue => issue.status === "Rejected"))?.length}
-          icon={XCircle}
-          color="text-red-500"
-        />
       </div>
 
-      {/* Charts and Additional Stats */}
-      < div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8" >
+      {/* ── Stat Cards ──────────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-8">
+        {statCards.map((s, i) => {
+          const Icon = s.icon;
+          return (
+            <div
+              key={i}
+              className="flex flex-col items-center sm:items-start bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+            >
+              <div className={`w-9 h-9 rounded-xl ${s.iconBg} flex items-center justify-center mb-3`}>
+                <Icon className={`w-4 h-4 ${s.iconColor}`} />
+              </div>
+              <p className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white mb-0.5">{s.value}</p>
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 leading-tight">{s.title}</p>
+              <div className={`mt-2.5 h-0.5 rounded-full bg-linear-to-r ${s.accent}`} />
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── Chart + Payment ─────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-5">
 
         {/* Payment Card */}
-        < div className="lg:col-span-1 card bg-linear-to-r from-purple-500 to-indigo-600 text-white shadow-xl" >
-          <div className="card-body flex flex-col justify-center p-6">
-            <div className="flex items-center justify-between">
-              <span className="text-2xl font-bold">Total Payments</span>
-              <span className="text-2xl font-bold">৳{singUser.totalPayment}</span>
+        <div className="relative overflow-hidden bg-linear-to-br from-violet-600 via-purple-600 to-indigo-700 rounded-xl p-6 text-white shadow-2xl shadow-violet-500/20">
+          <div className="pointer-events-none absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/5 blur-2xl" />
+          <div className="pointer-events-none absolute -bottom-10 -left-10 w-40 h-40 rounded-full bg-indigo-400/10 blur-2xl" />
+
+          <div className="relative">
+            <div className="flex items-center gap-2 mb-5">
+              <div className="w-9 h-9 bg-white/15 border border-white/20 rounded-xl flex items-center justify-center">
+                <DollarSign className="w-5 h-5" />
+              </div>
+              <span className="text-sm font-bold tracking-wide uppercase text-white/70">Total Payments</span>
             </div>
-            <div className="mt-4 space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-lg">Premium Subscription</span>
-                <span className="text-lg font-semibold">1000 ৳</span>
+
+            <p className="text-4xl font-black mb-1">৳{singUser.totalPayment || 0}</p>
+            <p className="text-white/50 text-xs mb-6">Lifetime spend on CityFix</p>
+
+            <div className="space-y-3">
+              {[
+                { label: 'Premium Subscription', amount: '৳1,000' },
+                { label: 'Priority Reports',      amount: '৳100' },
+              ].map((item, i) => (
+                <div key={i} className="flex items-center justify-between p-3 bg-white/10 border border-white/10 rounded-xl">
+                  <span className="text-sm text-white/80">{item.label}</span>
+                  <span className="text-sm font-bold text-white">{item.amount}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Premium badge */}
+            {singUser?.isPremium && (
+              <div className="mt-4 flex items-center gap-2 px-3 py-2 bg-amber-400/20 border border-amber-400/30 rounded-xl">
+                <span className="text-amber-300 text-xs font-bold">⭐ Premium Member</span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-lg">Priority Reports</span>
-                <span className="text-lg font-semibold">100 ৳</span>
-              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Bar Chart */}
+        <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">Issue Analysis</h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Overview of your reported issues</p>
+            </div>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+              <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">Live</span>
             </div>
           </div>
-        </div >
-
-        {/* Chart */}
-        < div className="lg:col-span-2 card bg-base-100 shadow-xl" >
-          <div className="card-body">
-            <h2 className="card-title text-gray-800 dark:text-white">Monthly Report Analysis</h2>
-
-            {/* Simple bar chart visualization */}
-            <div className="h-90">
-              <Bar data={chartData} options={chartOptions} />
-            </div>
-
+          <div className="h-56 sm:h-64">
+            <Bar data={chartData} options={chartOptions} />
           </div>
-        </div >
+        </div>
+      </div>
 
-      </div >
-
-    </div >
+    </div>
   );
 };
 

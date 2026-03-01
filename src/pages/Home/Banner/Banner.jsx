@@ -11,7 +11,7 @@ const Banner = () => {
             id: 1,
             title: "Report. Track. Resolve.",
             subtitle: "Your Voice Matters in Building Better Cities",
-            description: "Join thousands of citizens making their neighborhoods safer and cleaner by reporting infrastructure issues in real-time.",
+            description: "Join thousands making neighborhoods safer and cleaner by reporting issues in real time.",
             image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",
             color: "from-blue-600 to-cyan-500",
             buttonText: "Report an Issue",
@@ -42,7 +42,6 @@ const Banner = () => {
         }
     ];
 
-    // Auto slide every 5 seconds
     useEffect(() => {
         const interval = setInterval(() => {
             setCurrentSlide((prev) => (prev + 1) % slides.length);
@@ -50,29 +49,15 @@ const Banner = () => {
         return () => clearInterval(interval);
     }, [slides.length]);
 
-    const goToSlide = (index) => {
-        setCurrentSlide(index);
-    };
+    const goToSlide = (index) => setCurrentSlide(index);
+    const goToNext = () => setCurrentSlide((prev) => (prev + 1) % slides.length);
+    const goToPrev = () => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
 
-    const goToNext = () => {
-        setCurrentSlide((prev) => (prev + 1) % slides.length);
-    };
-
-    const goToPrev = () => {
-        setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
-    };
-
-    // Enhanced button click handler with debugging
     const handleButtonClick = () => {
         const link = slides[currentSlide].to;
-        // console.log('Button clicked, navigating to:', link);
-        
-        // Check if navigate function exists
         if (navigate) {
             navigate(link);
         } else {
-            // console.error('Navigate function is not available');
-            // Fallback to window location if navigate fails
             window.location.href = link;
         }
     };
@@ -95,19 +80,19 @@ const Banner = () => {
                             alt={slides[currentSlide].title}
                             className="w-full h-full object-cover"
                         />
-                        <div className={`absolute inset-0 bg-linear-to-r ${slides[currentSlide].color} mix-blend-multiply opacity-90`}></div>
-                        <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent"></div>
+                        <div className={`absolute inset-0 bg-linear-to-r ${slides[currentSlide].color} mix-blend-multiply opacity-90 dark:opacity-75`}></div>
+                        <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent dark:from-black/80"></div>
                     </div>
 
                     {/* Content */}
-                    <div className="relative h-full flex items-center px-4 sm:px-6 lg:px-8">
-                        <div className="container mx-auto px-15 sm:px-10">
-                            <div className="max-w-3xl">
+                    <div className="relative -top-6 h-full flex items-center px-4 sm:px-6 lg:px-8">
+                        <div className="container px-15 sm:px-10 flex flex-col items-center">
+                            <div className="max-w-3xl flex flex-col items-center">
                                 <motion.div
                                     initial={{ y: 30, opacity: 0 }}
                                     animate={{ y: 0, opacity: 1 }}
                                     transition={{ delay: 0.2, duration: 0.8 }}
-                                    className="inline-flex items-center px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full mb-6"
+                                    className="flex justify-center items-center px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full mb-6 dark:bg-white/10"
                                 >
                                     <span className="text-2xl mr-3">{slides[currentSlide].icon}</span>
                                     <span className="text-white font-semibold">{slides[currentSlide].subtitle}</span>
@@ -117,7 +102,7 @@ const Banner = () => {
                                     initial={{ y: 30, opacity: 0 }}
                                     animate={{ y: 0, opacity: 1 }}
                                     transition={{ delay: 0.3, duration: 0.8 }}
-                                    className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-6 leading-tight"
+                                    className="text-center text-3xl sm:text-4xl md:text-6xl font-bold text-white mb-6 leading-tight"
                                 >
                                     {slides[currentSlide].title}
                                 </motion.h1>
@@ -126,7 +111,7 @@ const Banner = () => {
                                     initial={{ y: 30, opacity: 0 }}
                                     animate={{ y: 0, opacity: 1 }}
                                     transition={{ delay: 0.4, duration: 0.8 }}
-                                    className="text-lg sm:text-xl text-white/90 mb-8 max-w-2xl leading-relaxed"
+                                    className="text-center text-lg sm:text-xl text-white/90 mb-8 max-w-2xl leading-relaxed dark:text-white/80"
                                 >
                                     {slides[currentSlide].description}
                                 </motion.p>
@@ -135,12 +120,12 @@ const Banner = () => {
                                     initial={{ y: 30, opacity: 0 }}
                                     animate={{ y: 0, opacity: 1 }}
                                     transition={{ delay: 0.5, duration: 0.8 }}
-                                    className="flex gap-4"
+                                    className="flex justify-center"
                                 >
                                     <button 
                                         onClick={handleButtonClick}
-                                        onMouseDown={(e) => e.preventDefault()} // Prevent default behavior
-                                        className="px-8 py-4 bg-white text-gray-900 font-bold rounded-2xl hover:bg-gray-100 transition-all duration-300 transform hover:scale-105 shadow-2xl text-center focus:outline-none focus:ring-2 focus:ring-white/50"
+                                        onMouseDown={(e) => e.preventDefault()} 
+                                        className="px-8 py-4 bg-white text-gray-900 font-bold rounded-xl hover:bg-gray-100 transition-all duration-300 transform hover:scale-105 shadow-2xl text-center focus:outline-none focus:ring-2 focus:ring-white/50 dark:bg-white/90 dark:text-gray-900 dark:hover:bg-white"
                                         data-testid="banner-button"
                                     >
                                         {slides[currentSlide].buttonText}
@@ -153,7 +138,7 @@ const Banner = () => {
                     {/* Navigation Arrows */}
                     <button
                         onClick={goToPrev}
-                        className="absolute left-4 top-1/2 transform -translate-y-1/2 w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-all duration-300 group focus:outline-none focus:ring-2 focus:ring-white/50"
+                        className="absolute left-4 top-1/2 transform -translate-y-1/2 w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-all duration-300 group focus:outline-none focus:ring-2 focus:ring-white/50 dark:bg-white/10 dark:hover:bg-white/20"
                         aria-label="Previous slide"
                     >
                         <svg className="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -163,7 +148,7 @@ const Banner = () => {
 
                     <button
                         onClick={goToNext}
-                        className="absolute right-4 top-1/2 transform -translate-y-1/2 w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-all duration-300 group focus:outline-none focus:ring-2 focus:ring-white/50"
+                        className="absolute right-4 top-1/2 transform -translate-y-1/2 w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-all duration-300 group focus:outline-none focus:ring-2 focus:ring-white/50 dark:bg-white/10 dark:hover:bg-white/20"
                         aria-label="Next slide"
                     >
                         <svg className="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -179,7 +164,7 @@ const Banner = () => {
                                 onClick={() => goToSlide(index)}
                                 className={`w-3 h-3 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-white/50 ${index === currentSlide
                                     ? 'bg-white w-8'
-                                    : 'bg-white/50 hover:bg-white/80'
+                                    : 'bg-white/50 hover:bg-white/80 dark:bg-white/30 dark:hover:bg-white/60'
                                     }`}
                                 aria-label={`Go to slide ${index + 1}`}
                             />
@@ -189,14 +174,14 @@ const Banner = () => {
             </AnimatePresence>
 
             {/* Floating Elements for Visual Interest */}
-            <div className="absolute top-1/4 left-10 w-64 h-64 bg-linear-to-r from-cyan-500/20 to-blue-500/20 rounded-full blur-3xl"></div>
-            <div className="absolute bottom-1/4 right-10 w-80 h-80 bg-linear-to-r from-purple-500/20 to-pink-500/20 rounded-full blur-3xl"></div>
+            <div className="absolute top-1/4 left-10 w-64 h-64 bg-linear-to-r from-cyan-500/20 to-blue-500/20 rounded-full blur-3xl dark:from-cyan-500/10 dark:to-blue-500/10"></div>
+            <div className="absolute bottom-1/4 right-10 w-80 h-80 bg-linear-to-r from-purple-500/20 to-pink-500/20 rounded-full blur-3xl dark:from-purple-500/10 dark:to-pink-500/10"></div>
 
             {/* Wave Divider at Bottom */}
             <div className="hidden sm:block absolute bottom-0 left-0 right-0">
                 <svg viewBox="0 0 1200 120" preserveAspectRatio="none" className="w-full h-16">
                     <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z"
-                        className="fill-white"
+                        className="fill-white dark:fill-gray-900"
                     ></path>
                 </svg>
             </div>

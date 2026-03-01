@@ -1,43 +1,31 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import {
-    Camera,
-    MapPin,
-    AlertCircle,
-    Upload,
-    X,
-    Hash,
-    FileText,
-    Shield,
-    Crown,
-    CheckCircle,
-    Clock,
+    Camera, MapPin, AlertCircle, Upload, X, Hash,
+    FileText, Shield, Crown, CheckCircle, Clock, Zap, Lock
 } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 import useAxiosSecure from '../../hooks/useAxiosSecure';
 import { useQuery } from '@tanstack/react-query';
 import Swal from 'sweetalert2';
 import axios from 'axios';
+import ReportIssuePageSkeleton from '../../Components/ReportIssuePageSkeleton';
 
 const ReportIssuePage = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
     const axiosSecure = useAxiosSecure();
 
-    const { data: singUser = {} } = useQuery({
+    const { data: singUser = {}, isLoading: userLoading } = useQuery({
         queryKey: ['singleUser', user?.email],
         queryFn: async () => {
             const res = await axiosSecure.get(`/singleUser?email=${user.email}`);
             return res.data;
         }
-    })
+    });
 
-    // Mock singleUser data - in real app, get from auth context
     const [singleUser, setSingleUser] = useState({
-        isPremium: singUser?.isPremium,
-        issueCount: singUser?.issueCount,
-        maxFreeIssues: 3,
-        isBlocked: singUser?.isBlocked,
+        isPremium: false, issueCount: 0, maxFreeIssues: 3, isBlocked: false,
     });
 
     useEffect(() => {
@@ -49,30 +37,18 @@ const ReportIssuePage = () => {
         });
     }, [singUser]);
 
-    // Form state
     const [formData, setFormData] = useState({
-        title: '',
-        description: '',
-        category: '',
-        status: 'Pending',
-        priority: 'Normal',
-        location: '',
-        images: [],
-        createdAt: new Date(),
-        resolvedDate: "",
-        upVotes: 0,
-        reportedById: singleUser?._id,
-        reportedByName: user.displayName,
-        reportedByEmail: user?.email,
-        isUpvoted: [],
-        isBoosted: false
+        title: '', description: '', category: '', status: 'Pending',
+        priority: 'Normal', location: '', images: [], createdAt: new Date(),
+        resolvedDate: '', upVotes: 0, reportedById: singUser?._id,
+        reportedByName: user?.displayName, reportedByEmail: user?.email,
+        isUpvoted: [], isBoosted: false
     });
 
-    // UI state
     const [errors, setErrors] = useState({});
     const [imagePreviews, setImagePreviews] = useState([]);
+    const [uploading, setUploading] = useState(false);
 
-    // Categories
     const categories = [
         { value: '', label: 'Select Category', icon: '📋' },
         { value: 'Road_damage', label: 'Road Damage (Potholes)', icon: '🛣️' },
@@ -84,650 +60,444 @@ const ReportIssuePage = () => {
         { value: 'Parks', label: 'Park Maintenance', icon: '🌳' },
         { value: 'Public_toilet', label: 'Public Toilet Issue', icon: '🚻' },
         { value: 'Noise', label: 'Noise Pollution', icon: '🔇' },
-        { value: 'Electricity', label: 'Electricity Issue', icon: '💡' },
+        { value: 'Electricity', label: 'Electricity Issue', icon: '⚡' },
         { value: 'Water_Supply', label: 'Water Supply Issue', icon: '💧' },
-        { value: 'Sanitation', label: 'Sanitation Issue', icon: '🗑️' },
+        { value: 'Sanitation', label: 'Sanitation Issue', icon: '♻️' },
         { value: 'Infrastructure', label: 'Infrastructure Issue', icon: '🏗️' },
         { value: 'Other', label: 'Other Issue', icon: '❓' },
     ];
 
-    // Check if singleUser can report more issues
     const canReportMore = singleUser.isPremium || singleUser.issueCount < singleUser.maxFreeIssues;
+    const isDisabled = !canReportMore || singleUser.isBlocked;
 
-    // Handle input changes
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setFormData((prev) => ({
-            ...prev,
-            [name]: value,
-        }));
-
-        // Clear error for this field
-        if (errors[name]) {
-            setErrors((prev) => ({ ...prev, [name]: '' }));
-        }
+        setFormData(prev => ({ ...prev, [name]: value }));
+        if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
     };
 
     const handleImageUpload = async (e) => {
         const files = Array.from(e.target.files);
-
         if (formData.images.length + files.length > 5) {
-            alert('Maximum 5 images allowed');
+            Swal.fire({ title: 'Too many images', text: 'Maximum 5 images allowed.', icon: 'warning', confirmButtonColor: '#3b82f6' });
             return;
         }
-
         const newImages = files.slice(0, 5 - formData.images.length);
-
-        // Create previews
-        const newPreviews = newImages.map((file) => ({
-            url: URL.createObjectURL(file),
-            name: file.name,
-        }));
-
-        setImagePreviews((prev) => [...prev, ...newPreviews]);
-
-        const image_API_URL = `https://api.imgbb.com/1/upload?key=${import.meta.env.VITE_image_host_key}`;
-
-        // Upload each file and get its URL
-        const uploadPromises = newImages.map(async (file) => {
-            const uploadData = new FormData();   // ✅ renamed
-            uploadData.append('image', file);
-
-            const res = await axios.post(image_API_URL, uploadData);
-            return res.data.data.url; // hosted image URL
-        });
-
-        // Wait for all uploads to finish
-        const uploadedUrls = await Promise.all(uploadPromises);
-
-        // ✅ Assign URLs into formData state
-        setFormData((prev) => ({
-            ...prev,
-            images: [...(prev.images || []), ...uploadedUrls],
-        }));
+        const newPreviews = newImages.map(f => ({ url: URL.createObjectURL(f), name: f.name }));
+        setImagePreviews(prev => [...prev, ...newPreviews]);
+        setUploading(true);
+        try {
+            const image_API_URL = `https://api.imgbb.com/1/upload?key=${import.meta.env.VITE_image_host_key}`;
+            const uploadedUrls = await Promise.all(newImages.map(async (file) => {
+                const uploadData = new FormData();
+                uploadData.append('image', file);
+                const res = await axios.post(image_API_URL, uploadData);
+                return res.data.data.url;
+            }));
+            setFormData(prev => ({ ...prev, images: [...(prev.images || []), ...uploadedUrls] }));
+            if (errors.images) setErrors(prev => ({ ...prev, images: '' }));
+        } catch {
+            Swal.fire({ title: 'Upload Failed', text: 'Failed to upload images. Please try again.', icon: 'error' });
+        } finally {
+            setUploading(false);
+        }
     };
 
-
-    // Remove image
     const removeImage = (index) => {
         const updatedImages = [...formData.images];
         const updatedPreviews = [...imagePreviews];
-
         updatedImages.splice(index, 1);
         updatedPreviews.splice(index, 1);
-
-        setFormData((prev) => ({ ...prev, images: updatedImages }));
+        setFormData(prev => ({ ...prev, images: updatedImages }));
         setImagePreviews(updatedPreviews);
     };
 
-    // Form validation
     const validateForm = () => {
         const newErrors = {};
-
-        if (!formData.title.trim()) {
-            newErrors.title = 'Title is required';
-        } else if (formData.title.length < 5) {
-            newErrors.title = 'Title must be at least 5 characters';
-        }
-
-        if (!formData.description.trim()) {
-            newErrors.description = 'Description is required';
-        } else if (formData.description.length < 20) {
-            newErrors.description = 'Description must be at least 20 characters';
-        }
-
-        if (!formData.category) {
-            newErrors.category = 'Please select a category';
-        }
-
-        if (!formData.location.trim()) {
-            newErrors.location = 'Please select a location';
-        }
-
-        if (formData.images.length === 0) {
-            newErrors.images = 'At least one image is required';
-        }
-
+        if (!formData.title.trim()) newErrors.title = 'Title is required';
+        else if (formData.title.length < 5) newErrors.title = 'Title must be at least 5 characters';
+        if (!formData.description.trim()) newErrors.description = 'Description is required';
+        else if (formData.description.length < 20) newErrors.description = 'Description must be at least 20 characters';
+        if (!formData.category) newErrors.category = 'Please select a category';
+        if (!formData.location.trim()) newErrors.location = 'Location is required';
+        if (formData.images.length === 0) newErrors.images = 'At least one image is required';
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
-    // Handle form submission
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!canReportMore || singleUser.isBlocked || !validateForm()) return;
+        const trackingEntry = {
+            action: 'Issue_Reported',
+            note: 'Issue has been submitted and is awaiting review',
+            timestamp: new Date(), by: user.email,
+        };
+        const data = { ...formData, timelineEntry: [trackingEntry], createdAt: new Date().toISOString() };
 
-        if (!canReportMore) {
-            alert('You have reached your free issue limit. Please upgrade to Premium.');
-            return;
-        }
-
-        if (singleUser.isBlocked) {
-            alert('Your account is blocked. Please contact authorities.');
-            return;
-        }
-
-        if (!validateForm()) {
-            return;
-        }
-
-
-        try {
-
-            // Create tracking timeline entry
-            const trackingEntry = {
-                action: 'Issue_Reported',
-                note: 'Issue has been submitted and is awaiting review',
-                timestamp: new Date(),
-                by: user.email,
-            };
-
-            // Save to database (simulated)
-            const data = {
-                ...formData,
-                timelineEntry: [trackingEntry],
-                createdAt: new Date().toISOString(),
-            }
-
-            Swal.fire({
-                title: "Report Issue Confirmation",
-                text: `Are you sure you want to report this issue?`,
-                icon: "question",
-                showCancelButton: true,
-                confirmButtonColor: "#3085d6",
-                cancelButtonColor: "#d33",
-                confirmButtonText: "Yes, Report Issue!",
-                cancelButtonText: "Cancel",
-                reverseButtons: true
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    // Show loading indicator while saving
-                    Swal.fire({
-                        title: "Saving Issue...",
-                        text: "Please wait while we save your issue.",
-                        allowOutsideClick: false,
-                        didOpen: () => {
-                            Swal.showLoading();
-                        }
-                    });
-
-                    // Save the issue to the database
-                    axiosSecure.post('/reportIssue', data)
-                        .then(res => {
-                            // console.log('Issue saved successfully:', res.data);
-
-                            if (res.data.insertedId) {
-                                // Close loading indicator
-                                Swal.close();
-
-                                // Show success message
-                                Swal.fire({
-                                    title: "Success!",
-                                    text: "Issue has been reported successfully.",
-                                    icon: "success",
-                                    confirmButtonColor: "#3085d6",
-                                    confirmButtonText: "View My Issues",
-                                    showCancelButton: true,
-                                    cancelButtonText: "Close"
-                                }).then((result) => {
-                                    if (result.isConfirmed) {
-                                        // Alternative: Auto navigate after success
-                                        axiosSecure.patch(`/updateUser/${singUser?._id}`, { issueCount: singUser.issueCount + 1 })
-                                            .then().catch()
-
-                                        navigate('/dashboard/myIssues');
-                                    }
-                                });
-
-                            } else {
-                                throw new Error('Failed to save issue');
+        Swal.fire({
+            title: 'Report this issue?', text: 'Are you sure you want to submit this report?',
+            icon: 'question', showCancelButton: true, confirmButtonColor: '#3b82f6',
+            cancelButtonColor: '#6b7280', confirmButtonText: 'Yes, Submit!', reverseButtons: true
+        }).then(result => {
+            if (result.isConfirmed) {
+                Swal.fire({ title: 'Submitting...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                axiosSecure.post('/reportIssue', data).then(res => {
+                    if (res.data.insertedId) {
+                        Swal.fire({
+                            title: 'Reported!', text: 'Issue reported successfully.', icon: 'success',
+                            confirmButtonColor: '#3b82f6', confirmButtonText: 'View My Issues',
+                            showCancelButton: true, cancelButtonText: 'Close'
+                        }).then(r => {
+                            if (r.isConfirmed) {
+                                axiosSecure.patch(`/updateUser/${singUser?._id}`, { issueCount: singUser.issueCount + 1 }).then().catch();
+                                navigate('/dashboard/myIssues');
                             }
-                        })
-                        .catch(error => {
-                            console.error('Error saving issue:', error);
-
-                            Swal.fire({
-                                title: "Error!",
-                                text: error.response?.data?.message || "Failed to report the issue. Please try again.",
-                                icon: "error",
-                                confirmButtonText: "Try Again"
-                            });
                         });
-                }
-            });
-
-        } catch (error) {
-            console.error('Error submitting issue:', error);
-            alert('Failed to submit issue. Please try again.');
-        }
+                    } else throw new Error('Failed');
+                }).catch(err => {
+                    Swal.fire({ title: 'Error!', text: err.response?.data?.message || 'Failed to report.', icon: 'error' });
+                });
+            }
+        });
     };
 
-    // Cleanup image previews on unmount
     useEffect(() => {
-        return () => {
-            imagePreviews.forEach(preview => URL.revokeObjectURL(preview.url));
-        };
+        return () => imagePreviews.forEach(p => URL.revokeObjectURL(p.url));
     }, [imagePreviews]);
 
+    const inputCls = (field) => `w-full px-4 py-2.5 rounded-xl border text-sm bg-gray-50 dark:bg-gray-700/60 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${errors[field] ? 'border-red-400 dark:border-red-500 bg-red-50 dark:bg-red-900/10' : 'border-gray-200 dark:border-gray-600'}`;
+
+    if (userLoading) return <ReportIssuePageSkeleton></ReportIssuePageSkeleton>;
+
     return (
-        <div className="min-h-screen bg-linear-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 p-4 md:p-8">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 lg:p-8 transition-colors duration-300">
+            <div className="max-w-7xl mx-auto">
 
-            {/* Blocked singleUser Warning */}
-            {singleUser.isBlocked && (
-                <div className="mb-6">
-                    <div className="alert alert-error shadow-lg">
-                        <AlertCircle className="w-6 h-6" />
+                {/* ── Blocked Warning ───────────────────────────── */}
+                {singleUser.isBlocked && (
+                    <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 flex items-start gap-3">
+                        <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
                         <div>
-                            <h3 className="font-bold">Account Blocked</h3>
-                            <div className="text-xs">
-                                Your account has been temporarily blocked by the administration.
-                                Please contact the authorities at{' '}
-                                <a href="tel:+8809609333222" className="font-semibold underline">
-                                    +880 9609 333222
-                                </a>{' '}
-                                or email{' '}
-                                <a href="mailto:support@infra.gov" className="font-semibold underline">
-                                    support@infra.gov
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* singleUser Limit Warning */}
-            {!singleUser.isBlocked && !canReportMore && (
-                <div className="mb-6">
-                    <div className="alert alert-warning shadow-lg">
-                        <AlertCircle className="w-6 h-6" />
-                        <div>
-                            <h3 className="font-bold">Free Issue Limit Reached!</h3>
-                            <div className="text-sm">
-                                You have reported {singleUser?.issueCount} issues. Free singleUsers can only report 3 issues.
-                                <button
-                                    onClick={() => navigate('/profile')}
-                                    className="btn btn-sm btn-primary ml-4 text-black"
-                                >
-                                    <Crown className="w-4 h-4 mr-2" />
-                                    Upgrade to Premium
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Header */}
-            <div className="max-w-8xl mx-auto">
-                <div className="mb-8">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h1 className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white">
-                                Report an Issue
-                            </h1>
-                            <p className="text-gray-600 dark:text-gray-300 mt-2">
-                                Help improve your city by reporting infrastructure problems
+                            <p className="font-bold text-red-700 dark:text-red-400 text-sm">Account Blocked</p>
+                            <p className="text-red-600 dark:text-red-300 text-xs mt-0.5">
+                                Contact{' '}<a href="tel:+8809609333222" className="underline font-semibold">+880 9609 333222</a>{' '}or{' '}
+                                <a href="mailto:support@infra.gov" className="underline font-semibold">support@infra.gov</a>
                             </p>
                         </div>
+                    </div>
+                )}
 
-                        {/* singleUser Status Card */}
-                        <div className="hidden md:block card bg-base-100 shadow-md">
-                            <div className="card-body p-4">
-                                <div className="flex items-center gap-3">
-                                    <div>
-                                        <div className="flex justify-between items-center gap-4">
-                                            <span className="font-semibold">User Status</span>
-                                            {
-                                                singleUser?.isPremium ? (
-                                                    <span className="badge badge-sm bg-linear-to-r from-yellow-500 to-amber-500 border-0 text-white gap-1">
-                                                        <Crown className="w-3 h-3" />
-                                                        Premium
-                                                    </span>
-                                                ) : (
-                                                    <span className="badge badge-sm bg-gray-400 border-0 text-white gap-1">
-                                                        Regular
-                                                    </span>
-                                                )
+                {/* ── Limit Warning ─────────────────────────────── */}
+                {!singleUser.isBlocked && !canReportMore && (
+                    <div className="mb-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                        <AlertCircle className="w-5 h-5 text-amber-500 shrink-0" />
+                        <div className="flex-1">
+                            <p className="font-bold text-amber-700 dark:text-amber-400 text-sm">Free Issue Limit Reached</p>
+                            <p className="text-amber-600 dark:text-amber-300 text-xs mt-0.5">
+                                You've used all {singleUser.maxFreeIssues} free reports. Upgrade to continue.
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => navigate('/dashboard/profilePage')}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-linear-to-r from-amber-500 to-orange-500 text-white text-xs font-bold rounded-xl hover:scale-[1.02] transition-all shadow-md shrink-0"
+                        >
+                            <Crown className="w-3.5 h-3.5" /> Upgrade to Premium
+                        </button>
+                    </div>
+                )}
 
-                                            }
-                                        </div>
+                {/* ── Header ────────────────────────────────────── */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                    <div>
+                        <h1 className="flex justify-center sm:justify-start text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">
+                            Report an{' '}
+                            <span className="ml-1.5 text-transparent bg-clip-text bg-linear-to-r from-blue-600 to-purple-600">Issue</span>
+                        </h1>
+                        <p className="text-center sm:text-start text-gray-500 dark:text-gray-400 text-sm mt-1">
+                            Help improve your city by reporting infrastructure problems
+                        </p>
+                    </div>
 
-                                        <div className={`flex items-center ${singleUser?.isPremium ? 'gap-0' : 'gap-5'}`}>
-                                            <p className='font-semibold'>Issues</p>
-                                            <p
-                                                className={`text-sm pt-1 ${singleUser?.isPremium
-                                                    ? 'text-gray-600'
-                                                    : canReportMore
-                                                        ? 'text-gray-500'
-                                                        : 'text-red-500 font-semibold'
-                                                    }`}
-                                            >
-                                                {singleUser.isPremium
-                                                    ? `${singleUser.issueCount}`
-                                                    : canReportMore
-                                                        ? `${singleUser.issueCount}/${singleUser.maxFreeIssues}`
-                                                        : 'Limit Reached'}
-                                            </p>
-                                        </div>
-
-                                    </div>
-                                </div>
-                            </div>
+                    {/* Status pill */}
+                    <div className="flex justify-center sm:justify-start items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm">
+                        <Shield className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                        <div className="text-xs">
+                            <span className="text-gray-500 dark:text-gray-400">Status: </span>
+                            <span className={`font-bold ${singleUser.isPremium ? 'text-amber-500' : 'text-blue-600 dark:text-blue-400'}`}>
+                                {singleUser.isPremium ? '⭐ Premium' : 'Regular'}
+                            </span>
+                        </div>
+                        <div className="w-px h-4 bg-gray-200 dark:bg-gray-600" />
+                        <div className="text-xs">
+                            <span className="text-gray-500 dark:text-gray-400">Issues: </span>
+                            <span className={`font-bold ${canReportMore ? 'text-gray-900 dark:text-white' : 'text-red-500'}`}>
+                                {singleUser.isPremium ? singleUser.issueCount : `${singleUser.issueCount}/${singleUser.maxFreeIssues}`}
+                            </span>
                         </div>
                     </div>
                 </div>
 
-                {/* singleUser Status Card (Mobile) */}
-                <div className="card bg-base-100 shadow-xl md:hidden">
-                    <div className="card-body">
-                        <h3 className="card-title text-gray-800 dark:text-white">
-                            <Shield className="w-5 h-5 mr-2" />
-                            Your Reporting Status
-                        </h3>
-                        <div className="space-y-4 mt-4">
-                            <div className="flex justify-between items-center">
-                                <span className="text-gray-600 dark:text-gray-300 font-semibold">Account Type</span>
-                                <span className={`font-semibold ${singleUser.isPremium ? 'text-amber-500' : ''}`}>
-                                    {singleUser.isPremium ? 'Premium' : 'Regular'}
-                                </span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className='font-semibold'>Issues Count</span>
-                                <span
-                                    className={`text-sm pt-1 ${singleUser.isPremium
-                                        ? 'text-gray-500'
-                                        : canReportMore
-                                            ? 'text-gray-500'
-                                            : 'text-red-500 font-semibold'
-                                        }`}
-                                >
-                                    {singleUser.isPremium
-                                        ? `${singleUser.issueCount}`
-                                        : canReportMore
-                                            ? `${singleUser.issueCount}/${singleUser.maxFreeIssues}`
-                                            : 'Limit Reached'}
-                                </span>
-                            </div>
+                {/* ── Main Grid ─────────────────────────────────── */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                        </div>
-                    </div>
-                </div>
-
-                {/* Main Content */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Left Column - Form */}
+                    {/* ── Left — Form ─────────────────────────────── */}
                     <div className="lg:col-span-2">
-                        <div className="card bg-base-100 shadow-xl">
-                            <div className="card-body p-6 md:p-8">
-                                <form onSubmit={handleSubmit}>
-                                    {/* Issue Title */}
-                                    <div className="form-control mb-6 flex gap-2">
-                                        <label className="label">
-                                            <span className="label-text font-semibold flex items-center gap-2">
-                                                <Hash className="w-4 h-4" />
-                                                Issue Title
-                                            </span>
+                        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg overflow-hidden">
+                            {/* Top gradient bar */}
+                            <div className="h-1 w-full bg-linear-to-r from-blue-500 via-purple-500 to-fuchsia-500" />
+
+                            <div className="p-5 sm:p-7">
+                                <form onSubmit={handleSubmit} className="space-y-5">
+
+                                    {/* Title */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+                                            <span className="flex items-center gap-1.5"><Hash className="w-3.5 h-3.5" /> Issue Title <span className="text-red-500">*</span></span>
                                         </label>
                                         <input
-                                            type="text"
-                                            name="title"
-                                            value={formData.title}
-                                            onChange={handleInputChange}
-                                            placeholder="Brief title of the problem"
-                                            className={`input input-bordered ${errors.title ? 'input-error' : ''}`}
-                                            disabled={!canReportMore || singleUser.isBlocked}
+                                            type="text" name="title" value={formData.title}
+                                            onChange={handleInputChange} disabled={isDisabled}
+                                            placeholder="Brief, descriptive title of the problem"
+                                            className={inputCls('title')}
                                         />
-                                        {errors.title && (
-                                            <label className="label">
-                                                <span className="label-text-alt text-red-500">{errors.title}</span>
-                                            </label>
-                                        )}
+                                        {errors.title && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.title}</p>}
                                     </div>
 
-                                    {/* Category Selection */}
-                                    <div className="form-control mb-6 flex gap-2">
-                                        <label className="label">
-                                            <span className="label-text font-semibold flex items-center gap-2">
-                                                <FileText className="w-4 h-4" />
-                                                Category
-                                            </span>
+                                    {/* Category */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+                                            <span className="flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" /> Category <span className="text-red-500">*</span></span>
                                         </label>
                                         <select
-                                            name="category"
-                                            value={formData.category}
-                                            onChange={handleInputChange}
-                                            className={`select select-bordered ${errors.category ? 'select-error' : ''}`}
-                                            disabled={!canReportMore || singleUser.isBlocked}
+                                            name="category" value={formData.category}
+                                            onChange={handleInputChange} disabled={isDisabled}
+                                            className={`${inputCls('category')} appearance-none`}
                                         >
-                                            {categories.map((cat) => (
-                                                <option key={cat.value} value={cat.value}>
-                                                    {cat.icon} {cat.label}
-                                                </option>
+                                            {categories.map(cat => (
+                                                <option key={cat.value} value={cat.value}>{cat.icon} {cat.label}</option>
                                             ))}
                                         </select>
-                                        {errors.category && (
-                                            <label className="label">
-                                                <span className="label-text-alt text-red-500">{errors.category}</span>
-                                            </label>
-                                        )}
+                                        {errors.category && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.category}</p>}
                                     </div>
 
                                     {/* Description */}
-                                    <div className="form-control mb-6 flex gap-2">
-                                        <label className="label">
-                                            <span className="label-text font-semibold flex items-center gap-2">
-                                                <FileText className="w-4 h-4" />
-                                                Description
-                                            </span>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+                                            <span className="flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" /> Description <span className="text-red-500">*</span></span>
                                         </label>
                                         <textarea
-                                            name="description"
-                                            value={formData.description}
-                                            onChange={handleInputChange}
-                                            placeholder="Please provide detailed information about the issue. Include when you noticed it, any safety concerns, and specific details."
-                                            className={`textarea textarea-bordered w-full h-48 ${errors.description ? 'textarea-error' : ''}`}
-                                            disabled={!canReportMore || singleUser.isBlocked}
+                                            name="description" value={formData.description}
+                                            onChange={handleInputChange} disabled={isDisabled} rows={5}
+                                            placeholder="Describe the issue in detail — when you noticed it, safety concerns, and any other relevant information."
+                                            className={inputCls('description')}
                                         />
-                                        {errors.description && (
-                                            <label className="label">
-                                                <span className="label-text-alt text-red-500">{errors.description}</span>
-                                            </label>
-                                        )}
+                                        <div className="flex items-center justify-between mt-1">
+                                            {errors.description
+                                                ? <p className="text-red-500 text-xs flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.description}</p>
+                                                : <span />
+                                            }
+                                            <span className={`text-xs ml-auto ${formData.description.length < 20 ? 'text-gray-400' : 'text-emerald-500'}`}>
+                                                {formData.description.length} / 20 min
+                                            </span>
+                                        </div>
                                     </div>
 
-                                    {/* Location Selection */}
-                                    <div className="form-control mb-6">
-                                        <label className="label">
-                                            <span className="label-text font-semibold flex items-center gap-2">
-                                                <MapPin className="w-4 h-4" />
-                                                Location
-                                            </span>
+                                    {/* Location */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+                                            <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> Location <span className="text-red-500">*</span></span>
                                         </label>
-
                                         <input
-                                            type="text"
-                                            name='location'
-                                            value={formData.location}
-                                            onChange={handleInputChange}
-                                            className={`input input-bordered w-full ${errors.location ? 'input-error' : ''}`}
-                                            placeholder="Select location details"
-                                            disabled={!canReportMore || singleUser.isBlocked}
+                                            type="text" name="location" value={formData.location}
+                                            onChange={handleInputChange} disabled={isDisabled}
+                                            placeholder="Street address, landmark, or area name"
+                                            className={inputCls('location')}
                                         />
-
-                                        {errors.location && (
-                                            <label className="label">
-                                                <span className="label-text-alt text-red-500">{errors.location}</span>
-                                            </label>
-                                        )}
+                                        {errors.location && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.location}</p>}
                                     </div>
 
                                     {/* Image Upload */}
-                                    <div className="form-control mb-6">
-                                        <label className="label">
-                                            <span className="label-text font-semibold flex items-center gap-2">
-                                                <Camera className="w-4 h-4" />
-                                                Upload Images
-                                                <span className="text-red-500">*</span>
-                                                <span className="text-sm text-gray-500 font-normal">
-                                                    (Max 5 images, at least 1 required)
-                                                </span>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+                                            <span className="flex items-center gap-1.5">
+                                                <Camera className="w-3.5 h-3.5" /> Photos <span className="text-red-500">*</span>
+                                                <span className="text-gray-400 font-normal normal-case">(max 5)</span>
                                             </span>
                                         </label>
 
-                                        {/* Image Upload Area */}
-                                        <div className={`border-2 border-dashed rounded-lg p-6 text-center transition-all ${errors.images
-                                            ? 'border-red-300 bg-red-50 dark:bg-red-900/10'
-                                            : 'border-gray-300 hover:border-primary'
-                                            }`}>
-                                            <div className="flex flex-col items-center">
-                                                <Upload className="w-12 h-12 text-gray-400 mb-4" />
-                                                <p className="mb-2 font-semibold">Drag & drop images here</p>
-                                                <p className="text-sm text-gray-500 mb-4">or click to browse</p>
-                                                <label className="btn btn-primary text-black">
-                                                    <Camera className="w-4 h-4 mr-2" />
-                                                    Choose Images
-                                                    <input
-                                                        type="file"
-                                                        className="hidden"
-                                                        accept="image/*"
-                                                        multiple
-                                                        onChange={handleImageUpload}
-                                                        disabled={!canReportMore || singleUser.isBlocked || formData.images.length >= 5}
-                                                    />
-                                                </label>
-                                                <p className="text-xs text-gray-500 mt-4">
-                                                    Supports JPG, PNG, WebP. Max 5MB per image.
-                                                </p>
-                                            </div>
-                                        </div>
+                                        {/* Drop zone */}
+                                        <label className={`relative flex flex-col items-center justify-center gap-3 p-8 rounded-xl border-2 border-dashed cursor-pointer transition-all ${errors.images
+                                                ? 'border-red-400 bg-red-50 dark:bg-red-900/10'
+                                                : 'border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 bg-gray-50 dark:bg-gray-700/30 hover:bg-blue-50/50 dark:hover:bg-blue-900/10'
+                                            } ${(isDisabled || formData.images.length >= 5) ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                            {uploading ? (
+                                                <>
+                                                    <div className="w-10 h-10 border-4 border-dashed rounded-full animate-spin border-blue-500" />
+                                                    <p className="text-sm text-blue-600 dark:text-blue-400 font-semibold">Uploading images...</p>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+                                                        <Upload className="w-6 h-6 text-blue-500" />
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                                            Drop images here or <span className="text-blue-600 dark:text-blue-400">browse</span>
+                                                        </p>
+                                                        <p className="text-xs text-gray-400 mt-0.5">JPG, PNG, WebP — max 5MB each</p>
+                                                    </div>
+                                                </>
+                                            )}
+                                            <input
+                                                type="file" className="hidden" accept="image/*" multiple
+                                                onChange={handleImageUpload}
+                                                disabled={isDisabled || formData.images.length >= 5 || uploading}
+                                            />
+                                        </label>
 
-                                        {/* Image Previews */}
+                                        {/* Previews */}
                                         {imagePreviews.length > 0 && (
-                                            <div className="mt-6">
-                                                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                                                    {imagePreviews.map((preview, index) => (
-                                                        <div key={index} className="relative group">
-                                                            <div className="aspect-square rounded-lg overflow-hidden border">
-                                                                <img
-                                                                    src={preview.url}
-                                                                    alt={`Preview ${index + 1}`}
-                                                                    className="w-full h-full object-cover"
-                                                                />
-                                                            </div>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => removeImage(index)}
-                                                                className="absolute -top-2 -right-2 btn btn-circle btn-xs btn-error"
-                                                            >
-                                                                <X className="w-3 h-3" />
-                                                            </button>
+                                            <div className="mt-4 grid grid-cols-3 sm:grid-cols-5 gap-3">
+                                                {imagePreviews.map((preview, index) => (
+                                                    <div key={index} className="relative group aspect-square rounded-xl overflow-hidden border-2 border-gray-200 dark:border-gray-600 shadow-sm">
+                                                        <img src={preview.url} alt={`Preview ${index + 1}`} className="w-full h-full object-cover" />
+                                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all" />
+                                                        <button
+                                                            type="button" onClick={() => removeImage(index)}
+                                                            className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                                                        >
+                                                            <X className="w-3 h-3" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                                {/* Add more slot */}
+                                                {formData.images.length < 5 && (
+                                                    <label className="aspect-square rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 transition-colors">
+                                                        <div className="text-center">
+                                                            <span className="text-xl text-gray-400">+</span>
+                                                            <p className="text-[10px] text-gray-400 mt-0.5">{formData.images.length}/5</p>
                                                         </div>
-                                                    ))}
-                                                </div>
-                                                <p className="text-sm text-gray-500 mt-3">
-                                                    {formData.images.length}/5 images uploaded
-                                                </p>
+                                                        <input type="file" className="hidden" accept="image/*" multiple onChange={handleImageUpload} disabled={isDisabled || uploading} />
+                                                    </label>
+                                                )}
                                             </div>
                                         )}
+                                        {errors.images && <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.images}</p>}
+                                    </div>
 
-                                        {errors.images && (
-                                            <label className="label">
-                                                <span className="label-text-alt text-red-500">{errors.images}</span>
-                                            </label>
+                                    {/* Submit */}
+                                    <div className="pt-2">
+                                        <button
+                                            type="submit" disabled={isDisabled || uploading}
+                                            className="w-full py-3 bg-linear-to-r from-blue-600 to-purple-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.01] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
+                                        >
+                                            {uploading
+                                                ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Uploading images...</>
+                                                : <><Zap className="w-4 h-4" /> Submit Issue Report</>
+                                            }
+                                        </button>
+                                        {isDisabled && !uploading && (
+                                            <p className="text-center text-xs text-gray-400 dark:text-gray-500 mt-2 flex items-center justify-center gap-1">
+                                                <Lock className="w-3 h-3" />
+                                                {singleUser.isBlocked ? 'Account blocked — cannot submit' : 'Upgrade to Premium to report more issues'}
+                                            </p>
                                         )}
                                     </div>
 
-                                    {/* Submit Button */}
-                                    <div className="flex flex-col sm:flex-row">
-                                        <button
-                                            type="submit"
-                                            className={`btn btn-primary text-black flex-1 p-2 `}
-                                            disabled={!canReportMore || singleUser.isBlocked}
-                                        >
-                                            Submit Issue Report
-                                        </button>
-                                    </div>
                                 </form>
                             </div>
                         </div>
                     </div>
 
-                    {/* Right Column - Guidelines & Status */}
-                    <div className="space-y-6">
+                    {/* ── Right — Sidebar ──────────────────────────── */}
+                    <div className="space-y-5">
+
                         {/* Reporting Guidelines */}
-                        <div className="card bg-base-100 shadow-xl">
-                            <div className="card-body">
-                                <h3 className="card-title text-gray-800 dark:text-white">
-                                    <CheckCircle className="w-5 h-5 mr-2" />
+                        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                            <div className="h-1 bg-linear-to-r from-emerald-500 to-teal-500" />
+                            <div className="p-5">
+                                <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white mb-4">
+                                    <div className="w-7 h-7 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center">
+                                        <CheckCircle className="w-4 h-4 text-emerald-500" />
+                                    </div>
                                     Reporting Guidelines
                                 </h3>
-                                <ul className="space-y-3 mt-4">
-                                    <li className="flex items-start gap-2">
-                                        <div className="w-2 h-2 bg-primary rounded-full mt-2"></div>
-                                        <span className="text-sm">Provide clear, descriptive titles</span>
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                        <div className="w-2 h-2 bg-primary rounded-full mt-2"></div>
-                                        <span className="text-sm">Include specific location details</span>
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                        <div className="w-2 h-2 bg-primary rounded-full mt-2"></div>
-                                        <span className="text-sm">Upload clear, well-lit photos</span>
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                        <div className="w-2 h-2 bg-primary rounded-full mt-2"></div>
-                                        <span className="text-sm">Describe safety concerns if any</span>
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                        <div className="w-2 h-2 bg-primary rounded-full mt-2"></div>
-                                        <span className="text-sm">Be accurate and factual</span>
-                                    </li>
+                                <ul className="space-y-2.5">
+                                    {[
+                                        'Provide a clear, descriptive title',
+                                        'Include specific location details',
+                                        'Upload clear, well-lit photos',
+                                        'Describe any safety concerns',
+                                        'Be accurate and factual',
+                                    ].map((tip, i) => (
+                                        <li key={i} className="flex items-start gap-2 text-xs text-gray-600 dark:text-gray-400">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
+                                            {tip}
+                                        </li>
+                                    ))}
                                 </ul>
                             </div>
                         </div>
 
                         {/* What Happens Next */}
-                        <div className="card bg-base-100 shadow-xl">
-                            <div className="card-body">
-                                <h3 className="card-title text-gray-800 dark:text-white">
-                                    <Clock className="w-5 h-5 mr-2" />
+                        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                            <div className="h-1 bg-linear-to-r from-blue-500 to-violet-500" />
+                            <div className="p-5">
+                                <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white mb-4">
+                                    <div className="w-7 h-7 bg-blue-50 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                                        <Clock className="w-4 h-4 text-blue-500" />
+                                    </div>
                                     What Happens Next
                                 </h3>
-                                <div className="space-y-4 mt-4">
-                                    <div className="flex items-start gap-3">
-                                        <div className="badge badge-primary text-black badge-lg mt-1">1</div>
-                                        <div>
-                                            <p className="font-medium">Submission Review</p>
-                                            <p className="text-sm text-gray-500">Admin reviews your report within 24 hours</p>
+                                <div className="space-y-4">
+                                    {[
+                                        { step: '1', title: 'Submission Review', desc: 'Admin reviews your report within 24 hours', color: 'bg-blue-500' },
+                                        { step: '2', title: 'Verification', desc: 'Staff verifies the issue on-site', color: 'bg-violet-500' },
+                                        { step: '3', title: 'Assignment', desc: 'Issue assigned to relevant department', color: 'bg-purple-500' },
+                                        { step: '4', title: 'Resolution', desc: 'Issue resolved with regular updates', color: 'bg-emerald-500' },
+                                    ].map((item, i, arr) => (
+                                        <div key={i} className="flex items-start gap-3">
+                                            <div className="relative flex flex-col items-center">
+                                                <div className={`w-6 h-6 ${item.color} rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0`}>
+                                                    {item.step}
+                                                </div>
+                                                {i < arr.length - 1 && <div className="w-px h-6 bg-gray-200 dark:bg-gray-700 mt-1" />}
+                                            </div>
+                                            <div className="pb-1">
+                                                <p className="text-xs font-bold text-gray-900 dark:text-white">{item.title}</p>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{item.desc}</p>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="flex items-start gap-3">
-                                        <div className="badge badge-primary text-black badge-lg mt-1">2</div>
-                                        <div>
-                                            <p className="font-medium">Verification</p>
-                                            <p className="text-sm text-gray-500">Staff verifies the issue on-site</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-start gap-3">
-                                        <div className="badge badge-primary text-black badge-lg mt-1">3</div>
-                                        <div>
-                                            <p className="font-medium">Assignment</p>
-                                            <p className="text-sm text-gray-500">Issue assigned to relevant department</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-start gap-3">
-                                        <div className="badge badge-primary text-black badge-lg mt-1">4</div>
-                                        <div>
-                                            <p className="font-medium">Resolution</p>
-                                            <p className="text-sm text-gray-500">Issue gets resolved with regular updates</p>
-                                        </div>
-                                    </div>
+                                    ))}
                                 </div>
                             </div>
                         </div>
+
+                        {/* Premium upsell */}
+                        {!singleUser.isPremium && (
+                            <div className="relative overflow-hidden bg-linear-to-br from-violet-600 to-indigo-700 rounded-xl p-5 text-white shadow-lg shadow-violet-500/20">
+                                <div className="pointer-events-none absolute -top-6 -right-6 w-24 h-24 rounded-full bg-white/5 blur-2xl" />
+                                <div className="flex items-center gap-2 mb-2">
+                                    <Crown className="w-4 h-4 text-amber-300" />
+                                    <span className="text-xs font-bold uppercase tracking-wide text-white/70">Go Premium</span>
+                                </div>
+                                <p className="text-sm font-bold mb-1">Unlimited issue reporting</p>
+                                <p className="text-xs text-white/60 mb-4">
+                                    Free users can report {singleUser.maxFreeIssues} issues. Upgrade for unlimited access.
+                                </p>
+                                <button
+                                    onClick={() => navigate('/dashboard/profilePage')}
+                                    className="w-full py-2 bg-white text-violet-700 text-xs font-black rounded-lg hover:scale-[1.02] transition-all shadow-md"
+                                >
+                                    Upgrade Now →
+                                </button>
+                            </div>
+                        )}
+
                     </div>
                 </div>
             </div>
-
         </div>
     );
 };

@@ -7,12 +7,12 @@ const HowItWorks = () => {
         {
             step: 1,
             title: "Report Issue",
-            description: "Take a photo, add details, and submit your infrastructure issue in less than 2 minutes",
+            description: "Take a photo, add details, and submit your issue in less than 2 minutes",
             icon: "📱",
             gradient: "from-blue-500 to-cyan-500",
             details: [
-                "Upload photos/videos",
-                "Pin location on map",
+                "Upload photos",
+                "Select location",
                 "Add description & category",
                 "Set priority level"
             ],
@@ -35,7 +35,7 @@ const HowItWorks = () => {
         {
             step: 3,
             title: "Assignment",
-            description: "Issue gets assigned to the relevant municipal department for immediate action",
+            description: "Issue gets assigned to the relevant department for immediate action",
             icon: "👥",
             gradient: "from-purple-500 to-pink-500",
             details: [
@@ -70,33 +70,21 @@ const HowItWorks = () => {
     ];
 
     return (
-        <section className="pt-20 pb-10 bg-linear-to-b from-white to-gray-50 relative overflow-hidden">
+        <section className="pt-10 pb-10 bg-linear-to-b from-white to-gray-50 dark:from-gray-800 dark:to-gray-800 relative overflow-hidden">
             {/* Background Decorations */}
-            <div className="absolute top-1/4 -left-32 w-96 h-96 bg-linear-to-r from-blue-100/30 to-cyan-100/30 rounded-full blur-3xl"></div>
-            <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-linear-to-r from-purple-100/30 to-pink-100/30 rounded-full blur-3xl"></div>
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full h-1 bg-linear-to-r from-transparent via-blue-200/20 to-transparent"></div>
+            <div className="absolute top-1/4 -left-32 w-96 h-96 bg-linear-to-r from-blue-100/30 to-cyan-100/30 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-full blur-3xl"></div>
+            <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-linear-to-r from-purple-100/30 to-pink-100/30 dark:from-purple-900/20 dark:to-pink-900/20 rounded-full blur-3xl"></div>
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full h-1 bg-linear-to-r from-transparent via-blue-200/20 dark:via-blue-700/20 to-transparent"></div>
 
             <div className="container mx-auto px-4 relative z-10">
                 {/* Header Section */}
                 <div className="text-center mb-16">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.6 }}
-                        viewport={{ once: true }}
-                        className="inline-flex items-center justify-center w-20 h-20 bg-linear-to-r from-blue-600 to-purple-600 rounded-2xl mb-6 shadow-2xl"
-                    >
-                        <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                    </motion.div>
-
                     <motion.h2
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.6, delay: 0.1 }}
                         viewport={{ once: true }}
-                        className="text-4xl md:text-5xl font-bold text-gray-900 mb-4"
+                        className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4"
                     >
                         How <span className="text-transparent bg-clip-text bg-linear-to-r from-blue-600 to-purple-600">CityFix</span> Works
                     </motion.h2>
@@ -106,7 +94,7 @@ const HowItWorks = () => {
                         whileInView={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.6, delay: 0.2 }}
                         viewport={{ once: true }}
-                        className="text-gray-600 text-lg max-w-3xl mx-auto"
+                        className="text-gray-600 dark:text-gray-300 text-lg max-w-3xl mx-auto"
                     >
                         Simple steps to report and get public infrastructure issues resolved efficiently.
                         Join thousands of citizens making their cities better.
@@ -118,7 +106,7 @@ const HowItWorks = () => {
                     {/* Connecting Line for Desktop */}
                     <div className="hidden lg:block absolute top-24 left-0 right-0 h-0.5 bg-linear-to-r from-blue-400 via-purple-400 to-orange-400 transform -translate-y-1/2"></div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 lg:gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-5">
                         {steps.map((step, index) => (
                             <motion.div
                                 key={step.step}
@@ -126,40 +114,35 @@ const HowItWorks = () => {
                                 whileInView={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.6, delay: index * 0.1 }}
                                 viewport={{ once: true }}
-                                className="relative"
+                                className="relative mb-6"
                             >
                                 {/* Step Number with Connector */}
                                 <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 lg:top-0 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2">
                                     <div className={`w-12 h-12 bg-linear-to-r ${step.gradient} rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg relative z-10`}>
                                         {step.step}
                                     </div>
-
-                                    {/* Connector Line for Mobile */}
-                                    {index < steps.length - 1 && (
-                                        <div className="lg:hidden absolute top-1/2 left-full w-full h-0.5 bg-linear-to-r from-blue-400 to-purple-400 transform translate-x-4"></div>
-                                    )}
                                 </div>
 
                                 {/* Step Card */}
                                 <div className="mt-8 lg:mt-12">
                                     <div className={`bg-linear-to-br ${step.gradient} p-1 rounded-2xl shadow-xl hover:shadow-2xl transition-shadow duration-300`}>
-                                        <div className="bg-white rounded-xl p-6 h-full">
+                                        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 h-full">
                                             {/* Icon */}
                                             <div className="flex items-center mb-4">
                                                 <div className={`w-16 h-16 bg-linear-to-r ${step.gradient} rounded-xl flex items-center justify-center text-3xl mr-4 shadow-lg`}>
                                                     {step.icon}
                                                 </div>
                                                 <div>
-                                                    <h3 className="text-xl font-bold text-gray-900">{step.title}</h3>
+                                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">{step.title}</h3>
                                                     <div className="flex items-center mt-1">
                                                         <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-                                                        <span className="text-sm text-gray-500">Step {step.step}</span>
+                                                        <span className="text-sm text-gray-500 dark:text-gray-400">Step {step.step}</span>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             {/* Description */}
-                                            <p className="text-gray-600 mb-6">
+                                            <p className="text-gray-600 dark:text-gray-300 mb-6">
                                                 {step.description}
                                             </p>
 
@@ -173,7 +156,7 @@ const HowItWorks = () => {
                                                         data-tooltip-content={`Learn more about ${detail.toLowerCase()}`}
                                                     >
                                                         <div className={`w-2 h-2 rounded-full bg-linear-to-r ${step.gradient} mr-3`}></div>
-                                                        <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">
+                                                        <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
                                                             {detail}
                                                         </span>
                                                         <Tooltip id={`tooltip-${step.step}-${idx}`} />
@@ -183,7 +166,7 @@ const HowItWorks = () => {
 
                                             {/* Animated Progress Indicator */}
                                             <div className="relative pt-4">
-                                                <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                                                <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                                     <motion.div
                                                         initial={{ width: 0 }}
                                                         whileInView={{ width: `${(step.step / steps.length) * 100}%` }}
@@ -192,7 +175,7 @@ const HowItWorks = () => {
                                                         className={`h-full bg-linear-to-r ${step.gradient} rounded-full`}
                                                     ></motion.div>
                                                 </div>
-                                                <div className="flex justify-between text-xs text-gray-500 mt-2">
+                                                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-2">
                                                     <span>Start</span>
                                                     <span>Step {step.step}</span>
                                                     <span>Complete</span>
@@ -212,11 +195,11 @@ const HowItWorks = () => {
                     whileInView={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, delay: 0.4 }}
                     viewport={{ once: true }}
-                    className="mt-20"
+                    className="mt-10"
                 >
-                    <div className="bg-linear-to-r from-white to-gray-50 rounded-2xl shadow-lg border border-gray-200 p-8">
-                        <h3 className="text-2xl font-bold text-center text-gray-800 mb-8">
-                            Why Citizens Trust CityFix
+                    <div className="bg-linear-to-r from-white to-gray-50 dark:from-gray-800 dark:to-gray-700 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-8">
+                        <h3 className="text-3xl sm:text-4xl font-bold text-center text-gray-800 dark:text-white mb-8">
+                            Why Citizens Trust <span className="text-transparent bg-clip-text bg-linear-to-r from-blue-600 to-purple-600">CityFix</span>
                         </h3>
 
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
@@ -229,37 +212,17 @@ const HowItWorks = () => {
                                     viewport={{ once: true }}
                                     className="text-center group"
                                 >
-                                    <div className="w-20 h-20 bg-linear-to-br from-blue-50 to-blue-100 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
+                                    <div className="w-20 h-20 bg-linear-to-br from-blue-50 to-blue-100 dark:from-blue-900/40 dark:to-blue-800/40 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
                                         {stat.icon}
                                     </div>
-                                    <div className="text-3xl font-bold text-gray-900 mb-2">{stat.value}</div>
-                                    <div className="text-gray-600 text-sm">{stat.label}</div>
+                                    <div className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{stat.value}</div>
+                                    <div className="text-gray-600 dark:text-gray-300 text-sm">{stat.label}</div>
                                 </motion.div>
                             ))}
                         </div>
                     </div>
                 </motion.div>
 
-                {/* Visual Timeline for Mobile */}
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    whileInView={{ opacity: 1 }}
-                    transition={{ duration: 0.6 }}
-                    viewport={{ once: true }}
-                    className="mt-12 lg:hidden"
-                >
-                    <div className="relative h-1 bg-linear-to-r from-blue-400 to-purple-400 rounded-full">
-                        {steps.map((step, index) => (
-                            <div
-                                key={step.step}
-                                className="absolute transform -translate-x-1/2 -translate-y-1/2"
-                                style={{ left: `${(index / (steps.length - 1)) * 100}%` }}
-                            >
-                                <div className={`w-4 h-4 rounded-full bg-linear-to-r ${step.gradient}`}></div>
-                            </div>
-                        ))}
-                    </div>
-                </motion.div>
             </div>
         </section>
     );

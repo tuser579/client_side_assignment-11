@@ -1,41 +1,118 @@
 import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-    HiOutlineDocumentText,
-    HiOutlineCheckCircle,
-    HiOutlineClock,
-    HiOutlineXCircle,
-    HiOutlineCurrencyDollar,
-    HiOutlineArrowRight,
-    HiOutlineEye,
-} from 'react-icons/hi';
+    FileText, CheckCircle2, Clock, XCircle, DollarSign,
+    ArrowRight, Eye, UserPlus, TrendingUp, Users, CreditCard,
+    AlertCircle, Shield, Ban, BarChart3, PieChart as PieChartIcon,
+    ChevronRight, Zap, Download, Trash2, X
+} from 'lucide-react';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell
 } from 'recharts';
-import {
-    FaUserPlus,
-    FaTimesCircle,
-    FaClock,
-    FaCheckCircle,
-    FaTimes as FaTimesIcon,
-    FaExclamationTriangle,
-    FaSpinner,
-    FaCog,
-    FaLock,
-    FaBan,
-    FaInfoCircle
-} from 'react-icons/fa';
 import useAxiosSecure from '../../hooks/useAxiosSecure';
 import useAuth from '../../hooks/useAuth';
 import { useNavigate } from 'react-router';
 import DeleteConfirmationModal from '../CitizenPage/Payment/DeleteConfirmationModal';
 import PaymentReceiptModal from '../CitizenPage/Payment/PaymentReceiptModal';
-import { Download, Trash2 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
+import { toast, Toaster } from 'react-hot-toast';
 
+/* ─── status config ─── */
+const STATUS_CFG = {
+    'Pending': { soft: 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800', Icon: Clock },
+    'In-Progress': { soft: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800', Icon: TrendingUp },
+    'Working': { soft: 'bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-400 border-violet-200 dark:border-violet-800', Icon: BarChart3 },
+    'Resolved': { soft: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800', Icon: CheckCircle2 },
+    'Closed': { soft: 'bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-600', Icon: Shield },
+    'Rejected': { soft: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800', Icon: Ban },
+};
+
+const StatusBadge = ({ status }) => {
+    const cfg = STATUS_CFG[status] || STATUS_CFG['Pending'];
+    const { Icon } = cfg;
+    return (
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold border ${cfg.soft}`}>
+            <Icon className="w-3 h-3" /> {status}
+        </span>
+    );
+};
+
+const PriorityBadge = ({ priority }) => {
+    const isHigh = priority?.toLowerCase() === 'high';
+    return (
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold border ${isHigh
+                ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800'
+                : 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800'
+            }`}>
+            <AlertCircle className="w-3 h-3" /> {isHigh ? 'High' : 'Normal'}
+        </span>
+    );
+};
+
+/* ─── stat card ─── */
+const StatCard = ({ value, label, sub, Icon, gradient, delay = 0 }) => (
+    <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay }}
+        className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+    >
+        <div className="flex items-center justify-between mb-3">
+            <div className={`w-9 h-9 bg-linear-to-br ${gradient} rounded-xl flex items-center justify-center shadow-sm`}>
+                <Icon className="w-4 h-4 text-white" />
+            </div>
+            <span className="text-2xl font-black text-gray-900 dark:text-white">{value}</span>
+        </div>
+        <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">{label}</p>
+        {sub && <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{sub}</p>}
+    </motion.div>
+);
+
+/* ─── section card wrapper ─── */
+const SectionCard = ({ title, sub, action, actionLabel, children, delay = 0, topBar = 'from-blue-500 to-purple-500' }) => {
+    const navigate = useNavigate();
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay }}
+            className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden"
+        >
+            <div className={`h-1 bg-linear-to-r ${topBar}`} />
+            <div className="flex items-center justify-between gap-2 px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+                <div>
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white">{title}</h3>
+                    {sub && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{sub}</p>}
+                </div>
+                {action && (
+                    <button
+                        onClick={action}
+                        className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
+                    >
+                        {actionLabel} <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                )}
+            </div>
+            {children}
+        </motion.div>
+    );
+};
+
+/* ─── custom tooltip ─── */
+const DarkTooltip = ({ active, payload, label }) => {
+    if (!active || !payload?.length) return null;
+    return (
+        <div className="bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 shadow-xl text-xs">
+            <p className="font-bold text-white mb-0.5">{label}</p>
+            <p className="text-gray-300">{payload[0].value} issues</p>
+        </div>
+    );
+};
+
+/* ═══════════════════════ MAIN COMPONENT ═══════════════════════ */
 const AdminDashboard = () => {
     const { user } = useAuth();
     const axiosSecure = useAxiosSecure();
@@ -50,364 +127,133 @@ const AdminDashboard = () => {
     const [selectedIssue, setSelectedIssue] = useState(null);
     const [selectedStaffId, setSelectedStaffId] = useState('');
 
-    // Fetch all issues
+    /* ── queries ── */
     const { data: stats = [], isLoading: issuesLoading } = useQuery({
         queryKey: ['allIssues'],
-        queryFn: async () => {
-            const response = await axiosSecure.get('/allIssues');
-            return response.data;
-        },
+        queryFn: async () => { const r = await axiosSecure.get('/allIssues'); return r.data; },
     });
 
-    // Fetch all staff members
     const { data: staffs = [], isLoading: staffsLoading } = useQuery({
         queryKey: ['staffs'],
-        queryFn: async () => {
-            const response = await axiosSecure.get('/staffs');
-            return response.data;
-        },
+        queryFn: async () => { const r = await axiosSecure.get('/staffs'); return r.data; },
     });
 
-    // Fetch all payments
     const { data: payments = [], isLoading: paymentsLoading } = useQuery({
         queryKey: ['allPayment'],
-        queryFn: async () => {
-            const response = await axiosSecure.get(`/allPayment?email${user?.email}`);
-            return response.data;
-        },
+        queryFn: async () => { const r = await axiosSecure.get(`/allPayment?email${user?.email}`); return r.data; },
         enabled: !!user,
     });
 
-    // Fetch all citizenUsers
     const { data: allUsers = [], isLoading: usersLoading } = useQuery({
         queryKey: ['allUsers'],
-        queryFn: async () => {
-            const response = await axiosSecure.get('/allUsers');
-            return response.data;
-        },
+        queryFn: async () => { const r = await axiosSecure.get('/allUsers'); return r.data; },
         enabled: !!user,
     });
 
-    // Delete mutation
+    /* ── mutations ── */
     const deleteMutation = useMutation({
-        mutationFn: async (paymentId) => {
-            await axiosSecure.delete(`/myPaymentDelete/${paymentId}`);
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries(['myPayments', user.email]);
-            setShowDeleteModal(false);
-        }
+        mutationFn: async (id) => { await axiosSecure.delete(`/myPaymentDelete/${id}`); },
+        onSuccess: () => { queryClient.invalidateQueries(['allPayment']); setShowDeleteModal(false); },
     });
 
-    // Assign staff mutation
     const assignStaffMutation = useMutation({
         mutationFn: async ({ issueId, staffId, staffName, staffEmail, timelineEntry }) => {
-            // Add tracking record to timeline
-            const timeline = {
-                action: 'Staff_Assigned',
-                timestamp: new Date(),
-                note: `Issue assigned to ${staffEmail} by admin`,
-                by: user.email
-            };
-
+            const timeline = { action: 'Staff_Assigned', timestamp: new Date(), note: `Assigned to ${staffEmail}`, by: user.email };
             await axiosSecure.patch(`/myIssueUpdate/${issueId}`, {
-                updatedAt: new Date(),
-                assignedStaffId: staffId,
-                assignedStaffName: staffName,
-                assignedStaffEmail: staffEmail,
-                timelineEntry: [...timelineEntry, timeline]
+                updatedAt: new Date(), assignedStaffId: staffId, assignedStaffName: staffName,
+                assignedStaffEmail: staffEmail, timelineEntry: [...timelineEntry, timeline]
             });
-            return { issueId, staffId, staffName };
+            return { issueId, staffName };
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['allIssues'] });
-            setShowAssignModal(false);
-            setSelectedIssue(null);
-            setSelectedStaffId('');
-
-            Swal.fire({
-                icon: 'success',
-                title: 'Staff Assigned',
-                text: `Issue assigned to ${data.staffName} successfully!`,
-                timer: 2000,
-                showConfirmButton: false,
-                background: '#f0fdf4',
-                color: '#14532d',
-                customClass: {
-                    popup: 'rounded-2xl'
-                }
-            });
+            setShowAssignModal(false); setSelectedIssue(null); setSelectedStaffId('');
+            toast.success(`Assigned to ${data.staffName}!`);
         },
-        onError: (error) => {
-            Swal.fire({
-                icon: 'error',
-                title: 'Assignment Failed',
-                text: `Failed to assign staff: ${error.message}`,
-                confirmButtonColor: '#ef4444',
-                background: '#fef2f2',
-                color: '#7f1d1d',
-                customClass: {
-                    popup: 'rounded-2xl',
-                    confirmButton: 'px-4 py-2.5 rounded-xl font-medium'
-                }
-            });
-        }
+        onError: (err) => toast.error(`Assignment failed: ${err.message}`),
     });
 
-    // Reject issue mutation
     const rejectIssueMutation = useMutation({
         mutationFn: async ({ issueId, timelineEntry }) => {
-
-            // Add tracking record to timeline
-            const entry = {
-                action: 'Rejected',
-                timestamp: new Date(),
-                note: 'Issue rejected by admin',
-                by: user.email
-            };
-
+            const entry = { action: 'Rejected', timestamp: new Date(), note: 'Rejected by admin', by: user.email };
             await axiosSecure.patch(`/myIssueUpdate/${issueId}`, {
-                status: 'Rejected',
-                updatedAt: new Date(),
-                timelineEntry: [...timelineEntry, entry]
-            });
-
-            return issueId;
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['allIssues'] });
-
-            Swal.fire({
-                icon: 'success',
-                title: 'Issue Rejected',
-                text: 'Issue rejected successfully!',
-                timer: 2000,
-                showConfirmButton: false,
-                background: '#f0fdf4',
-                color: '#14532d',
-                customClass: {
-                    popup: 'rounded-2xl'
-                }
+                status: 'Rejected', updatedAt: new Date(), timelineEntry: [...timelineEntry, entry]
             });
         },
-        onError: (error) => {
-            Swal.fire({
-                icon: 'error',
-                title: 'Rejection Failed',
-                text: `Failed to reject issue: ${error.message}`,
-                confirmButtonColor: '#ef4444',
-                background: '#fef2f2',
-                color: '#7f1d1d',
-                customClass: {
-                    popup: 'rounded-2xl',
-                    confirmButton: 'px-4 py-2.5 rounded-xl font-medium'
-                }
-            });
-        }
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['allIssues'] }); toast.success('Issue rejected'); },
+        onError: (err) => toast.error(`Rejection failed: ${err.message}`),
     });
 
-    // Handle delete
-    const handleDeleteClick = (payment) => {
-        setSelectedPayment(payment);
-        setShowDeleteModal(true);
-    };
-
-    const confirmDelete = () => {
-        if (selectedPayment) {
-            deleteMutation.mutate(selectedPayment._id);
-        }
-    };
-
-    // Mutation for updating user block status
     const updateUserStatusMutation = useMutation({
         mutationFn: async ({ _id, isBlocked }) => {
-            const response = await axiosSecure.patch(`/updateUser/${_id}`, {
-                isBlocked: !isBlocked
-            });
-            return response.data;
+            const r = await axiosSecure.patch(`/updateUser/${_id}`, { isBlocked: !isBlocked });
+            return r.data;
         },
         onMutate: async ({ _id, isBlocked }) => {
             await queryClient.cancelQueries({ queryKey: ['allUsers'] });
-            const previousUsers = queryClient.getQueryData(['allUsers']);
-            queryClient.setQueryData(['allUsers'], (old) =>
-                old.map(users =>
-                    users._id === _id
-                        ? { ...users, isBlocked: !isBlocked }
-                        : users
-                )
-            );
-            return { previousUsers };
+            const prev = queryClient.getQueryData(['allUsers']);
+            queryClient.setQueryData(['allUsers'], old => old.map(u => u._id === _id ? { ...u, isBlocked: !isBlocked } : u));
+            return { prev };
         },
-        onError: (err, variables, context) => {
-            if (context?.previousUsers) {
-                queryClient.setQueryData(['allUsers'], context.previousUsers);
-            }
-            MySwal.fire({
-                title: 'Error!',
-                text: 'Failed to update user status. Please try again.',
-                icon: 'error',
-                confirmButtonText: 'OK',
-                confirmButtonColor: '#ef4444',
-                background: '#fef2f2',
-                color: '#7f1d1d',
-                customClass: {
-                    popup: 'rounded-2xl',
-                    confirmButton: 'px-4 py-2.5 rounded-xl font-medium'
-                }
-            });
-        },
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: ['allUsers'] });
-            MySwal.fire({
-                title: 'Success!',
-                text: `User has been ${variables.isBlocked ? 'unblocked' : 'blocked'} successfully.`,
-                icon: 'success',
-                timer: 2000,
-                timerProgressBar: true,
-                showConfirmButton: false,
-                background: '#f0fdf4',
-                color: '#14532d',
-                customClass: {
-                    popup: 'rounded-2xl'
-                }
-            });
-        },
-        onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: ['allUsers'] });
-        }
+        onError: (_, __, ctx) => { if (ctx?.prev) queryClient.setQueryData(['allUsers'], ctx.prev); toast.error('Failed to update status'); },
+        onSuccess: (_, vars) => { queryClient.invalidateQueries({ queryKey: ['allUsers'] }); toast.success(`User ${vars.isBlocked ? 'unblocked' : 'blocked'}`); },
+        onSettled: () => queryClient.invalidateQueries({ queryKey: ['allUsers'] }),
     });
 
-    // Handle assign staff button click
-    const handleAssignStaff = (issue) => {
-        setSelectedIssue(issue);
-        setSelectedStaffId('');
-        setShowAssignModal(true);
-    };
+    /* ── handlers ── */
+    const handleDeleteClick = (p) => { setSelectedPayment(p); setShowDeleteModal(true); };
+    const confirmDelete = () => { if (selectedPayment) deleteMutation.mutate(selectedPayment._id); };
+    const handleAssignStaff = (i) => { setSelectedIssue(i); setSelectedStaffId(''); setShowAssignModal(true); };
 
-    // Handle confirm assignment
     const handleConfirmAssignment = () => {
-        if (!selectedStaffId) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Select Staff',
-                text: 'Please select a staff member',
-                timer: 2000,
-                showConfirmButton: false,
-                background: '#fef3c7',
-                color: '#92400e',
-                customClass: {
-                    popup: 'rounded-2xl'
-                }
-            });
-            return;
-        }
-
-        const selectedStaff = staffs.find(staff => staff._id === selectedStaffId);
-        if (!selectedStaff) return;
-
-        assignStaffMutation.mutate({
-            issueId: selectedIssue._id,
-            staffId: selectedStaff._id,
-            staffName: selectedStaff.name,
-            staffEmail: selectedStaff.email,
-            timelineEntry: selectedIssue.timelineEntry
-        });
+        if (!selectedStaffId) { toast.error('Please select a staff member'); return; }
+        const staff = staffs.find(s => s._id === selectedStaffId);
+        if (!staff) return;
+        assignStaffMutation.mutate({ issueId: selectedIssue._id, staffId: staff._id, staffName: staff.name, staffEmail: staff.email, timelineEntry: selectedIssue.timelineEntry || [] });
     };
 
-    // Handle reject issue
     const handleRejectIssue = (issue) => {
         Swal.fire({
-            title: 'Reject Issue?',
-            text: `Are you sure you want to reject "${issue.title}"? This action cannot be undone.`,
+            title: 'Reject this issue?',
+            text: `"${issue.title}" — this cannot be undone.`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#ef4444',
             cancelButtonColor: '#6b7280',
-            confirmButtonText: 'Yes, reject it!',
+            confirmButtonText: 'Yes, reject',
             cancelButtonText: 'Cancel',
-            background: '#ffffff',
-            color: '#1e293b',
-            iconColor: '#f59e0b'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                rejectIssueMutation.mutate({
-                    issueId: issue._id,
-                    timelineEntry: issue.timelineEntry
-                });
-            }
-        });
+            reverseButtons: true,
+            customClass: { popup: 'rounded-2xl' },
+        }).then(r => { if (r.isConfirmed) rejectIssueMutation.mutate({ issueId: issue._id, timelineEntry: issue.timelineEntry || [] }); });
     };
 
-    // Handle block/unblock with SweetAlert2 confirmation
     const handleToggleBlock = async (sing) => {
-        const result = await MySwal.fire({
+        const r = await MySwal.fire({
             title: `${sing.isBlocked ? 'Unblock' : 'Block'} User?`,
-            html: `
-                <div class="text-left space-y-3">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-12 h-12 rounded-full bg-linear-to-br ${sing.isBlocked ? 'from-emerald-500 to-emerald-600' : 'from-rose-500 to-rose-600'} flex items-center justify-center text-white font-bold">
-                            ${sing.name?.charAt(0) || 'U'}
-                        </div>
-                        <div>
-                            <h4 class="font-semibold text-gray-900">${sing.name || 'Unknown User'}</h4>
-                            <p class="text-sm text-gray-600">${sing.email || 'N/A'}</p>
-                        </div>
-                    </div>
-                    <p class="text-sm text-gray-700">
-                        Are you sure you want to ${sing.isBlocked ? 'unblock' : 'block'} this user?
-                        ${sing.isBlocked ? 'They will regain access to all features.' : 'They will lose access to most features.'}
-                    </p>
-                </div>
-            `,
+            html: `<p class="text-sm text-gray-600 mt-2">Are you sure you want to ${sing.isBlocked ? 'unblock' : 'block'} <strong>${sing.name || sing.email}</strong>?</p>`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: sing.isBlocked ? '#10b981' : '#ef4444',
             cancelButtonColor: '#6b7280',
-            confirmButtonText: `Yes, ${sing.isBlocked ? 'unblock' : 'block'}`,
+            confirmButtonText: sing.isBlocked ? 'Unblock' : 'Block',
             cancelButtonText: 'Cancel',
             reverseButtons: true,
-            background: '#f8fafc',
-            color: '#0f172a',
-            customClass: {
-                popup: 'rounded-2xl',
-                confirmButton: 'px-4 py-2.5 rounded-xl font-medium transition-all hover:scale-105',
-                cancelButton: 'px-4 py-2.5 rounded-xl font-medium',
-            },
-            buttonsStyling: false,
-            showCloseButton: true,
+            customClass: { popup: 'rounded-2xl' },
         });
-
-        if (result.isConfirmed) {
-            updateUserStatusMutation.mutate({
-                _id: sing._id,
-                isBlocked: sing.isBlocked
-            });
-        }
+        if (r.isConfirmed) updateUserStatusMutation.mutate({ _id: sing._id, isBlocked: sing.isBlocked });
     };
 
-    // Calculate counts from stats data
-    const totalIssues = stats.length || 0;
-    const pendingIssues = stats.filter(issue => issue.status === 'Pending').length;
-    const resolvedIssues = stats.filter(issue => issue.status === 'Resolved' || issue.status === 'resolved').length;
-    const rejectedIssues = stats.filter(issue => issue.status === 'Rejected' || issue.status === 'rejected').length;
-    const totalRevenue = payments.reduce((total, payment) => total + (parseFloat(payment.amount) || 0), 0);
+    /* ── derived ── */
+    const totalIssues = stats.length;
+    const pendingIssues = stats.filter(i => i.status === 'Pending').length;
+    const resolvedIssues = stats.filter(i => ['Resolved', 'resolved'].includes(i.status)).length;
+    const rejectedIssues = stats.filter(i => ['Rejected', 'rejected'].includes(i.status)).length;
+    const totalRevenue = payments.reduce((t, p) => t + (parseFloat(p.amount) || 0), 0);
 
-    // Get latest issues (most recent 3)
-    const latestIssues = [...stats]
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-        .slice(0, 3);
+    const latestIssues = [...stats].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 3);
+    const latestPayments = [...payments].sort((a, b) => new Date(b.paidAt) - new Date(a.paidAt)).slice(0, 3);
+    const latestUsers = [...allUsers].sort((a, b) => new Date(b.memberSince) - new Date(a.memberSince)).slice(0, 3);
 
-    // Get latest payments (most recent 3)
-    const latestPayments = [...payments]
-        .sort((a, b) => new Date(b.paidAt) - new Date(a.paidAt))
-        .slice(0, 3);
-
-    // Get latest citizenUsers (most recent 3)
-    const latestUsers = [...allUsers]
-        .sort((a, b) => new Date(b.memberSince) - new Date(a.memberSince))
-        .slice(0, 3);
-
-    // Issues Status Data for Bar Chart
     const issuesStatusData = [
         { status: 'Total', count: totalIssues, color: '#3B82F6' },
         { status: 'Pending', count: pendingIssues, color: '#F59E0B' },
@@ -415,886 +261,582 @@ const AdminDashboard = () => {
         { status: 'Rejected', count: rejectedIssues, color: '#EF4444' },
     ];
 
-    // Calculate issues by category dynamically from stats
     const categoryCounts = {};
-    stats.forEach(issue => {
-        if (issue.category) {
-            categoryCounts[issue.category] = (categoryCounts[issue.category] || 0) + 1;
-        }
-    });
+    stats.forEach(i => { if (i.category) categoryCounts[i.category] = (categoryCounts[i.category] || 0) + 1; });
+    const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
+    const issuesByCategory = Object.entries(categoryCounts).map(([name, value], idx) => ({ name, value, color: COLORS[idx % COLORS.length] }));
 
-    // Convert to array for pie chart
-    const issuesByCategory = Object.entries(categoryCounts).map(([name, value], index) => {
-        const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
-        return {
-            name,
-            value,
-            color: colors[index % colors.length]
-        };
-    });
-
-    // Format currency
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('en-BD', {
-            style: 'currency',
-            currency: 'BDT',
-            minimumFractionDigits: 0
-        }).format(amount || 0);
-    };
-
-    // Format date with time
-    const formatDate = (dateString) => {
-        if (!dateString) return 'N/A';
+    const formatCurrency = (amt) => new Intl.NumberFormat('en-BD', { style: 'currency', currency: 'BDT', minimumFractionDigits: 0 }).format(amt || 0);
+    const formatDate = (ds) => {
+        if (!ds) return '—';
         try {
-            const date = new Date(dateString);
-            return date.toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric'
-            }) + ' at ' + date.toLocaleTimeString('en-US', {
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true
-            });
-        } catch (error) {
-            console.error('Error formatting date:', error, dateString);
-            return 'Invalid date';
-        }
+            return new Date(ds).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        } catch { return '—'; }
     };
 
-    // Status badge component
-    const StatusBadge = ({ status }) => {
-        const config = {
-            "Pending": { color: 'bg-amber-100 text-amber-800', icon: <FaClock className="w-3 h-3" /> },
-            "In-Progress": { color: 'bg-blue-100 text-blue-800', icon: <FaSpinner className="w-3 h-3" /> },
-            "Working": { color: 'bg-indigo-100 text-indigo-800', icon: <FaCog className="w-3 h-3" /> },
-            "Resolved": { color: 'bg-emerald-100 text-emerald-800', icon: <FaCheckCircle className="w-3 h-3" /> },
-            "Closed": { color: 'bg-gray-100 text-gray-800', icon: <FaLock className="w-3 h-3" /> },
-            "Rejected": { color: 'bg-rose-100 text-rose-800', icon: <FaBan className="w-3 h-3" /> }
-        };
+    /* ── loading ── */
+    if (issuesLoading || paymentsLoading || usersLoading) return (
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 lg:p-8">
+            <div className="max-w-7xl mx-auto animate-pulse space-y-6">
+                <div className="h-10 w-64 bg-gray-200 dark:bg-gray-700 rounded-xl" />
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                    {[...Array(5)].map((_, i) => <div key={i} className="h-28 bg-gray-200 dark:bg-gray-700 rounded-xl" />)}
+                </div>
+                <div className="h-80 bg-gray-200 dark:bg-gray-700 rounded-xl" />
+                <div className="h-80 bg-gray-200 dark:bg-gray-700 rounded-xl" />
+            </div>
+        </div>
+    );
 
-        const { color, icon } = config[status] || { color: 'bg-gray-100 text-gray-800', icon: null };
+    /* ════════════════════════ RENDER ════════════════════════ */
+    return (
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 lg:p-8 transition-colors duration-300">
+            <Toaster position="top-center" toastOptions={{ style: { background: '#1f2937', color: '#fff', borderRadius: '12px' } }} />
 
-        return (
-            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
-                {icon}
-                {status.charAt(0).toUpperCase() + status.slice(1)}
-            </span>
-        );
-    };
+            <div className="max-w-7xl mx-auto space-y-6">
 
-    const PriorityBadge = ({ priority }) => {
-        const config = {
-            'High': {
-                color: 'bg-gradient-to-r from-red-500/10 to-red-500/5 text-red-700 border border-red-200',
-                icon: <FaExclamationTriangle className="w-3 h-3 text-red-500" />,
-                label: 'High'
-            },
-            'Normal': {
-                color: 'bg-gradient-to-r from-blue-500/10 to-blue-500/5 text-blue-700 border border-blue-200',
-                icon: <FaInfoCircle className="w-3 h-3 text-blue-500" />,
-                label: 'Normal'
-            }
-        };
+                {/* ── Header ── */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                    <div className="h-1.5 bg-linear-to-r from-blue-500 via-purple-500 to-fuchsia-500" />
+                    <div className="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h1 className="text-center sm:text-start text-2xl sm:text-3xl font-black text-gray-900 dark:text-white tracking-tight">
+                                Admin{' '}
+                                <span className="text-transparent bg-clip-text bg-linear-to-r from-blue-600 to-purple-600">Dashboard</span>
+                            </h1>
+                            <p className="text-center sm:text-start text-sm text-gray-500 dark:text-gray-400 mt-0.5">Platform overview and management</p>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                            <div className="hidden sm:flex items-center gap-4 text-right">
+                                <div><p className="text-xl font-black text-gray-900 dark:text-white">{totalIssues}</p><p className="text-xs text-gray-400 dark:text-gray-500">Total Issues</p></div>
+                                <div><p className="text-xl font-black text-gray-900 dark:text-white">{allUsers.length}</p><p className="text-xs text-gray-400 dark:text-gray-500">Total Users</p></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-        // Normalize priority input (handle different cases)
-        const normalizedPriority = priority?.charAt(0).toUpperCase() + priority?.slice(1).toLowerCase();
-        const { color, icon, label } = config[normalizedPriority] || config['Normal'];
+                {/* ── Stat Cards ── */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+                    <StatCard value={totalIssues} label="Total Issues" sub="All reported" Icon={FileText} gradient="from-blue-500 to-cyan-500" delay={0} />
+                    <StatCard value={pendingIssues} label="Pending" sub="Awaiting action" Icon={Clock} gradient="from-amber-500 to-orange-500" delay={0.05} />
+                    <StatCard value={resolvedIssues} label="Resolved" sub="Successfully closed" Icon={CheckCircle2} gradient="from-emerald-500 to-teal-500" delay={0.1} />
+                    <StatCard value={rejectedIssues} label="Rejected" sub="Not approved" Icon={XCircle} gradient="from-red-500 to-rose-500" delay={0.15} />
+                    <StatCard value={formatCurrency(totalRevenue)} label="Revenue" sub="All time" Icon={DollarSign} gradient="from-violet-500 to-purple-500" delay={0.2} />
+                </div>
 
-        return (
-            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${color}`}>
-                {icon}
-                {label}
-            </span>
-        );
-    };
-
-    // Loading state
-    if (issuesLoading || paymentsLoading || usersLoading) {
-        return (
-            <div className="min-h-screen bg-gray-50 p-4 md:p-6 lg:p-8">
-                <div className="max-w-7xl mx-auto">
-                    <div className="animate-pulse">
-                        <div className="h-10 w-64 bg-gray-200 rounded mb-8"></div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-                            {[...Array(5)].map((_, i) => (
-                                <div key={i} className="h-32 bg-gray-200 rounded-xl"></div>
+                {/* ── Bar Chart — Status Distribution ── */}
+                <SectionCard
+                    title="Issues Status Distribution"
+                    sub="Current status of all reported issues"
+                    delay={0.25}
+                    topBar="from-blue-500 to-cyan-500"
+                >
+                    <div className="p-5 sm:p-6">
+                        <div className="h-64 sm:h-72">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={issuesStatusData} barSize={40}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-gray-700" />
+                                    <XAxis dataKey="status" tick={{ fill: '#6b7280', fontSize: 12 }} axisLine={false} tickLine={false} />
+                                    <YAxis tick={{ fill: '#6b7280', fontSize: 12 }} axisLine={false} tickLine={false} />
+                                    <Tooltip content={<DarkTooltip />} />
+                                    <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                                        {issuesStatusData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
+                            {issuesStatusData.map((item, i) => (
+                                <div key={i} className="flex items-center justify-between px-3 py-2.5 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-700">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-2.5 h-2.5 rounded-full" style={{ background: item.color }} />
+                                        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{item.status}</span>
+                                    </div>
+                                    <span className="text-sm font-black" style={{ color: item.color }}>{item.count}</span>
+                                </div>
                             ))}
                         </div>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                            <div className="h-96 bg-gray-200 rounded-xl"></div>
-                            <div className="h-96 bg-gray-200 rounded-xl"></div>
-                        </div>
                     </div>
-                </div>
-            </div>
-        );
-    }
+                </SectionCard>
 
-    return (
-        <div className="min-h-screen bg-gray-50 p-4 md:p-6 lg:p-8">
-            <div className="max-w-7xl mx-auto">
-                {/* Header */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
-                    <div>
-                        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
-                            Dashboard Overview
-                        </h1>
-                    </div>
-                </div>
-
-                {/* Row 1: Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-                    {/* Total Issues Card */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-white rounded-xl shadow p-5 border border-gray-200"
-                    >
-                        <div className="flex items-center justify-between mb-7">
-                            <div className="p-2 bg-blue-100 rounded-lg">
-                                <HiOutlineDocumentText className="w-5 h-5 text-blue-600" />
-                            </div>
-                            <span className="text-2xl font-bold text-gray-900 mb-1">{totalIssues}</span>
-                        </div>
-                        <div className="text-sm text-gray-600">Total Issues</div>
-                        <div className="mt-2 text-xs text-gray-500">All reported issues</div>
-                    </motion.div>
-
-                    {/* Pending Issues Card */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 }}
-                        className="bg-white rounded-xl shadow p-5 border border-gray-200"
-                    >
-                        <div className="flex items-center justify-between mb-7">
-                            <div className="p-2 bg-orange-100 rounded-lg">
-                                <HiOutlineClock className="w-5 h-5 text-orange-600" />
-                            </div>
-                            <span className="text-2xl font-bold text-gray-900 mb-1">{pendingIssues}</span>
-                        </div>
-                        <div className="text-sm text-gray-600">Pending Issues</div>
-                        <div className="mt-2 text-xs text-gray-500">Awaiting action</div>
-                    </motion.div>
-
-                    {/* Resolved Issues Card */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                        className="bg-white rounded-xl shadow p-5 border border-gray-200"
-                    >
-                        <div className="flex items-center justify-between mb-7">
-                            <div className="p-2 bg-green-100 rounded-lg">
-                                <HiOutlineCheckCircle className="w-5 h-5 text-green-600" />
-                            </div>
-                            <span className="text-2xl font-bold text-gray-900 mb-1">{resolvedIssues}</span>
-                        </div>
-                        <div className="text-sm text-gray-600">Resolved Issues</div>
-                        <div className="mt-2 text-xs text-gray-500">Successfully resolved</div>
-                    </motion.div>
-
-                    {/* Rejected Issues Card */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 }}
-                        className="bg-white rounded-xl shadow p-5 border border-gray-200"
-                    >
-                        <div className="flex items-center justify-between mb-7">
-                            <div className="p-2 bg-red-100 rounded-lg">
-                                <HiOutlineXCircle className="w-5 h-5 text-red-600" />
-                            </div>
-                            <span className="text-2xl font-bold text-gray-900 mb-1">{rejectedIssues}</span>
-                        </div>
-                        <div className="text-sm text-gray-600">Rejected Issues</div>
-                        <div className="mt-2 text-xs text-gray-500">Not approved</div>
-                    </motion.div>
-
-                    {/* Total Revenue Card */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.4 }}
-                        className="bg-linear-to-br from-blue-600 to-blue-700 rounded-xl shadow p-5 text-white"
-                    >
-                        <div className="flex items-center justify-between mb-7">
-                            <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
-                                <HiOutlineCurrencyDollar className="w-5 h-5" />
-                            </div>
-                            <span className="text-2xl font-bold mb-1">
-                                {formatCurrency(totalRevenue)}
-                            </span>
-                        </div>
-                        <div className="text-sm text-blue-100">Total Revenue</div>
-                        <div className="mt-2 text-xs text-blue-200">All time revenue</div>
-                    </motion.div>
-                </div>
-
-                {/* Row 2: Issue Status Distribution Chart */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 }}
-                    className="bg-white rounded-xl shadow p-5 mb-6 border border-gray-200"
+                {/* ── Pie Chart — Category ── */}
+                <SectionCard
+                    title="Issues by Category"
+                    sub={issuesByCategory.length > 0 ? `${issuesByCategory.length} categories` : 'No data yet'}
+                    delay={0.3}
+                    topBar="from-violet-500 to-fuchsia-500"
                 >
-                    <div className="mb-6">
-                        <h3 className="text-lg font-bold text-gray-900">Issues Status Distribution</h3>
-                        <p className="text-sm text-gray-600">Current status of all reported issues</p>
-                    </div>
-                    <div className="h-72">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={issuesStatusData}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                                <XAxis
-                                    dataKey="status"
-                                    stroke="#6b7280"
-                                    fontSize={12}
-                                    tick={{ fill: '#6b7280' }}
-                                />
-                                <YAxis
-                                    stroke="#6b7280"
-                                    fontSize={12}
-                                    tick={{ fill: '#6b7280' }}
-                                />
-                                <Tooltip
-                                    formatter={(value) => [`${value} issues`, 'Count']}
-                                    contentStyle={{
-                                        borderRadius: '8px',
-                                        border: '1px solid #e5e7eb',
-                                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                                        backgroundColor: 'white'
-                                    }}
-                                    labelStyle={{ color: '#374151', fontWeight: 'bold' }}
-                                />
-                                <Bar
-                                    dataKey="count"
-                                    name="Issue Count"
-                                    radius={[4, 4, 0, 0]}
-                                >
-                                    {issuesStatusData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                    ))}
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-                        {issuesStatusData.map((item, index) => (
-                            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                <div className="flex items-center gap-2">
-                                    <div
-                                        className="w-3 h-3 rounded-sm"
-                                        style={{ backgroundColor: item.color }}
-                                    />
-                                    <span className="text-sm font-medium text-gray-700">{item.status}</span>
-                                </div>
-                                <span className="text-lg font-bold" style={{ color: item.color }}>
-                                    {item.count}
-                                </span>
-                            </div>
-                        ))}
-                    </div>
-                </motion.div>
-
-                {/* Row 3: Issue Category Distribution */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.6 }}
-                    className="bg-white rounded-xl shadow p-5 mb-6 border border-gray-200"
-                >
-                    <div className="mb-6">
-                        <h3 className="text-lg font-bold text-gray-900">Issues by Category</h3>
-                        <p className="text-sm text-gray-600">
-                            {issuesByCategory.length > 0
-                                ? `Distribution of issues across ${issuesByCategory.length} categories`
-                                : 'No category data available'
-                            }
-                        </p>
-                    </div>
-                    {issuesByCategory.length > 0 ? (
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <div className="h-72">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie
-                                            data={issuesByCategory}
-                                            cx="50%"
-                                            cy="50%"
-                                            labelLine={true}
-                                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                                            outerRadius={100}
-                                            innerRadius={30}
-                                            paddingAngle={2}
-                                            dataKey="value"
-                                        >
-                                            {issuesByCategory.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={entry.color} />
-                                            ))}
-                                        </Pie>
-                                        <Tooltip
-                                            formatter={(value) => [`${value} issues`, 'Count']}
-                                            contentStyle={{
-                                                borderRadius: '8px',
-                                                border: '1px solid #e5e7eb',
-                                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                                                backgroundColor: 'white'
-                                            }}
-                                        />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            </div>
-                            <div className="space-y-3">
-                                <h4 className="font-medium text-gray-700 mb-3">Category Breakdown</h4>
-                                {issuesByCategory.map((category, index) => (
-                                    <div key={index} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                                        <div className="flex items-center gap-3">
-                                            <div
-                                                className="w-4 h-4 rounded-sm"
-                                                style={{ backgroundColor: category.color }}
-                                            />
-                                            <span className="text-sm font-medium text-gray-700">
-                                                {category.name}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-4">
-                                            <span className="text-sm font-bold text-gray-900">
-                                                {category.value} issues
-                                            </span>
-                                            <span className="text-xs text-gray-500">
-                                                {totalIssues > 0
-                                                    ? ((category.value / totalIssues) * 100).toFixed(1)
-                                                    : 0
-                                                }%
-                                            </span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="h-72 flex items-center justify-center text-gray-500">
-                            No category data available
-                        </div>
-                    )}
-                </motion.div>
-
-                {/* Row 4: Recent Issues Table - Updated with Assign/Reject buttons */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.7 }}
-                    className="mb-8"
-                >
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        <div className="px-5 py-4 border-b border-gray-200">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <h3 className="text-lg font-bold text-gray-900">Recent Issues</h3>
-                                    <p className="text-sm text-gray-600">Last 3 reported issues</p>
-                                </div>
-                                <button
-                                    onClick={() => navigate('/dashboard/issuesManagement')}
-                                    className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
-                                >
-                                    View All Issues <HiOutlineArrowRight className="w-4 h-4" />
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="py-4 px-6 text-left text-gray-700 font-semibold">
-                                            Issue Title
-                                        </th>
-                                        <th className="py-4 px-6 text-left text-gray-700 font-semibold">
-                                            Category
-                                        </th>
-                                        <th className="py-4 px-6 text-left text-gray-700 font-semibold">
-                                            Status
-                                        </th>
-                                        <th className="py-4 px-6 text-left text-gray-700 font-semibold">
-                                            Priority
-                                        </th>
-                                        <th className="py-4 px-6 text-left text-gray-700 font-semibold">Assigned Staff</th>
-                                        <th className="py-4 px-6 text-left text-gray-700 font-semibold">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {latestIssues.length > 0 ? (
-                                        latestIssues.map((issue) => (
-                                            <tr
-                                                key={issue._id}
-                                                className={`border-t border-gray-100 hover:bg-gray-50 transition-colors ${issue.isBoosted ? 'bg-purple-50 hover:bg-purple-100' : ''
-                                                    }`}
+                    <div className="p-5 sm:p-6">
+                        {issuesByCategory.length > 0 ? (
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <div className="h-64 sm:h-72">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie
+                                                data={issuesByCategory} cx="50%" cy="50%"
+                                                labelLine={false} outerRadius={100} innerRadius={35}
+                                                paddingAngle={2} dataKey="value"
+                                                label={({ name, percent }) => percent > 0.06 ? `${(percent * 100).toFixed(0)}%` : ''}
                                             >
-                                                <td className="py-4 px-6">
-                                                    <div className="font-medium text-gray-900">{issue.title}</div>
-                                                    {issue.isBoosted && (
-                                                        <div className="text-xs text-purple-600 mt-1">⭐ Boosted Issue</div>
-                                                    )}
-                                                </td>
-                                                <td className="py-4 px-6">
-                                                    <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
-                                                        {issue.category}
-                                                    </span>
-                                                </td>
-                                                <td className="py-4 px-6">
-                                                    <StatusBadge status={issue.status} />
-                                                </td>
-                                                <td className="py-4 px-6">
-                                                    <PriorityBadge priority={issue.priority} />
-                                                </td>
-                                                <td className="py-4 px-6">
-                                                    {issue.assignedStaffId ? (
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-8 h-8 bg-linear-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                                                                {issue.assignedStaffName?.charAt(0) || 'S'}
-                                                            </div>
-                                                            <span className="text-gray-700">{issue.assignedStaffName}</span>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-gray-400 italic">Not assigned</span>
-                                                    )}
-                                                </td>
-                                                <td className="py-4 px-6">
-                                                    <div className="flex gap-2">
-                                                        {/* View Details Button */}
-                                                        <button
-                                                            onClick={() => navigate(`/issueDetailsPage/${issue._id}`)}
-                                                            className="px-3 py-2 bg-linear-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all flex items-center gap-2"
-                                                        >
-                                                            <HiOutlineEye className="w-3 h-3" />
-                                                            <span className="font-medium text-sm">View</span>
-                                                        </button>
-
-                                                        {/* Assign Staff Button - Only show if not assigned */}
-                                                        {!issue.assignedStaffId && (
-                                                            <button
-                                                                onClick={() => handleAssignStaff(issue)}
-                                                                disabled={assignStaffMutation.isPending}
-                                                                className="px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-medium transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                            >
-                                                                <FaUserPlus className="w-3 h-3" />
-                                                                Assign Staff
-                                                            </button>
-                                                        )}
-
-                                                        {/* Reject Button - Only show if status is pending */}
-                                                        {issue.status === 'Pending' && (
-                                                            <button
-                                                                onClick={() => handleRejectIssue(issue)}
-                                                                disabled={rejectIssueMutation.isPending}
-                                                                className="px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                            >
-                                                                <FaTimesCircle className="w-3 h-3" />
-                                                                Reject
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan="6" className="py-12 text-center">
-                                                <div className="text-gray-500">
-                                                    No issues found
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+                                                {issuesByCategory.map((e, i) => <Cell key={i} fill={e.color} stroke="transparent" />)}
+                                            </Pie>
+                                            <Tooltip
+                                                formatter={(v) => [`${v} issues`, 'Count']}
+                                                contentStyle={{ background: '#1f2937', border: '1px solid #374151', borderRadius: '12px', color: '#fff', fontSize: '12px' }}
+                                                itemStyle={{ color: '#d1d5db' }}           // ← value row: light gray
+                                                labelStyle={{ color: '#ffffff', fontWeight: 700 }}  // ← category label: white bold
+                                                wrapperStyle={{ outline: 'none' }}          // ← removes recharts' default white outer border
+                                            />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+                                <div className="space-y-2">
+                                    <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-3">Category Breakdown</p>
+                                    {issuesByCategory.map((cat, i) => (
+                                        <div key={i} className="flex items-center justify-between px-3 py-2.5 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                            <div className="flex items-center gap-2.5">
+                                                <div className="w-3 h-3 rounded-full shrink-0" style={{ background: cat.color }} />
+                                                <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{cat.name}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2.5">
+                                                <span className="text-xs font-black text-gray-900 dark:text-white">{cat.value}</span>
+                                                <span className="text-[10px] text-gray-400 dark:text-gray-500 w-8 text-right">
+                                                    {totalIssues > 0 ? `${((cat.value / totalIssues) * 100).toFixed(1)}%` : '0%'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center h-48 text-center">
+                                <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-2xl flex items-center justify-center mb-3">
+                                    <PieChartIcon className="w-6 h-6 text-gray-400" />
+                                </div>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">No category data available</p>
+                            </div>
+                        )}
                     </div>
-                </motion.div>
+                </SectionCard>
 
-                {/* Row 5: Recent Payments Table */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.8 }}
-                    className="bg-white rounded-xl shadow mb-6 border border-gray-200"
+                {/* ── Recent Issues Table ── */}
+                <SectionCard
+                    title="Recent Issues"
+                    sub="Last 3 reported issues"
+                    action={() => navigate('/dashboard/issuesManagement')}
+                    actionLabel="View All Issues"
+                    delay={0.35}
+                    topBar="from-amber-500 to-orange-500"
                 >
-                    <div className="px-5 py-4 border-b border-gray-200">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-bold text-gray-900">Recent Payments</h3>
-                            <button
-                                onClick={() => navigate('/dashboard/paymentsPage')}
-                                className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
-                                View All Payments<HiOutlineArrowRight className="w-4 h-4" />
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="overflow-x-auto">
+                    {/* Desktop table */}
+                    <div className="hidden md:block overflow-x-auto">
                         <table className="w-full">
                             <thead>
-                                <tr className="bg-gray-50">
-                                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Transaction ID</th>
-                                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">User Email</th>
-                                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Amount</th>
-                                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Type</th>
-                                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Date</th>
-                                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
+                                <tr className="border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-700/30">
+                                    {['Issue Title', 'Category', 'Status', 'Priority', 'Assigned Staff', 'Actions'].map(h => (
+                                        <th key={h} className="py-3 px-5 text-left text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest whitespace-nowrap">{h}</th>
+                                    ))}
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200">
-                                {latestPayments.length > 0 ? (
-                                    latestPayments.map((payment, index) => (
-                                        <tr key={index} className="hover:bg-gray-50">
-                                            <td className="px-5 py-4">
-                                                <div className="text-sm font-medium text-gray-900 truncate max-w-xs">
-                                                    {payment.transactionId || `PAY-${index + 1}`}
-                                                </div>
-                                            </td>
-                                            <td className="px-5 py-4">
-                                                <div className="text-sm text-gray-700 truncate max-w-xs">
-                                                    {payment.customerEmail || 'N/A'}
-                                                </div>
-                                            </td>
-                                            <td className="px-5 py-4">
-                                                <div className="text-sm font-bold text-green-600">
-                                                    {formatCurrency(payment.amount)}
-                                                </div>
-                                            </td>
-                                            <td className="px-5 py-4">
-                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${payment.type === 'Premium Subscription'
-                                                    ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                                                    : payment.type === 'Boost Issue'
-                                                        ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                                                        : 'bg-gray-100 text-gray-800 border border-gray-200'
-                                                    }`}>
-                                                    {payment.type || 'Unknown'}
+                            <tbody>
+                                {latestIssues.length > 0 ? latestIssues.map(issue => (
+                                    <tr key={issue._id} className={`border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50/50 dark:hover:bg-gray-700/20 transition-colors ${issue.isBoosted ? 'bg-amber-50/20 dark:bg-amber-900/5' : ''}`}>
+                                        <td className="py-4 px-5">
+                                            <p className="text-sm font-bold text-gray-900 dark:text-white line-clamp-1">{issue.title}</p>
+                                            {issue.isBoosted && (
+                                                <span className="inline-flex items-center gap-1 text-[10px] font-black text-amber-600 dark:text-amber-400 mt-0.5">
+                                                    <Zap className="w-2.5 h-2.5" /> Boosted
                                                 </span>
-                                            </td>
-                                            <td className="px-5 py-4 text-sm text-gray-600">
-                                                {formatDate(payment.paidAt)}
-                                            </td>
-                                            <td className="py-4 px-5">
+                                            )}
+                                        </td>
+                                        <td className="py-4 px-5">
+                                            <span className="inline-flex items-center px-2.5 py-1 rounded-xl text-xs font-bold bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
+                                                {issue.category}
+                                            </span>
+                                        </td>
+                                        <td className="py-4 px-5"><StatusBadge status={issue.status} /></td>
+                                        <td className="py-4 px-5"><PriorityBadge priority={issue.priority} /></td>
+                                        <td className="py-4 px-5">
+                                            {issue.assignedStaffId ? (
                                                 <div className="flex items-center gap-2">
-                                                    <button
-                                                        onClick={() => {
-                                                            setSelectedPayment(payment);
-                                                            setShowReceiptModal(true);
-                                                        }}
-                                                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                        title="Download Receipt"
-                                                    >
-                                                        <Download className="w-5 h-5" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDeleteClick(payment)}
-                                                        disabled={deleteMutation.isLoading}
-                                                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                                                        title="Delete Payment"
-                                                    >
-                                                        <Trash2 className="w-5 h-5" />
-                                                    </button>
+                                                    <div className="w-7 h-7 bg-linear-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                                                        {issue.assignedStaffName?.charAt(0) || 'S'}
+                                                    </div>
+                                                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{issue.assignedStaffName}</span>
                                                 </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan="6" className="px-5 py-8 text-center text-gray-500">
-                                            No payments found
+                                            ) : (
+                                                <span className="text-xs text-gray-400 dark:text-gray-500 italic">Not assigned</span>
+                                            )}
+                                        </td>
+                                        <td className="py-4 px-5">
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                                <button onClick={() => navigate(`/issueDetailsPage/${issue._id}`)}
+                                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 text-xs font-bold rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors">
+                                                    <Eye className="w-3 h-3" /> View
+                                                </button>
+                                                {!issue.assignedStaffId && (
+                                                    <button onClick={() => handleAssignStaff(issue)} disabled={assignStaffMutation.isPending}
+                                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 text-xs font-bold rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors disabled:opacity-50">
+                                                        <UserPlus className="w-3 h-3" /> Assign
+                                                    </button>
+                                                )}
+                                                {issue.status === 'Pending' && (
+                                                    <button onClick={() => handleRejectIssue(issue)} disabled={rejectIssueMutation.isPending}
+                                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-xs font-bold rounded-xl hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50">
+                                                        <XCircle className="w-3 h-3" /> Reject
+                                                    </button>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
+                                )) : (
+                                    <tr><td colSpan={6} className="py-12 text-center text-sm text-gray-400 dark:text-gray-500">No issues found</td></tr>
                                 )}
                             </tbody>
                         </table>
                     </div>
 
-                </motion.div>
-
-                {/* Row 6: Recent user Table */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.9 }}
-                    className="bg-white rounded-xl shadow mb-6 border border-gray-200"
-                >
-                    <div className="px-5 py-4 border-b border-gray-200">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-bold text-gray-900">New User</h3>
-                            <button
-                                onClick={() => navigate('/dashboard/manageUsers')}
-                                className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
-                                View All Users<HiOutlineArrowRight className="w-4 h-4" />
-                            </button>
-                        </div>
+                    {/* Mobile cards */}
+                    <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-700">
+                        {latestIssues.length > 0 ? latestIssues.map(issue => (
+                            <div key={issue._id} className={`p-4 ${issue.isBoosted ? 'bg-amber-50/30 dark:bg-amber-900/5' : ''}`}>
+                                <div className="flex items-start justify-between gap-2 mb-2">
+                                    <p className="text-sm font-bold text-gray-900 dark:text-white line-clamp-2">{issue.title}</p>
+                                    {issue.isBoosted && <span className="inline-flex items-center gap-1 text-[10px] font-black text-amber-600 shrink-0"><Zap className="w-2.5 h-2.5" />Boosted</span>}
+                                </div>
+                                <div className="flex flex-wrap gap-1.5 mb-3">
+                                    <StatusBadge status={issue.status} />
+                                    <PriorityBadge priority={issue.priority} />
+                                    <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800">{issue.category}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                    <button onClick={() => navigate(`/issueDetailsPage/${issue._id}`)} className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 text-xs font-bold rounded-xl">
+                                        <Eye className="w-3 h-3" /> View
+                                    </button>
+                                    {!issue.assignedStaffId && (
+                                        <button onClick={() => handleAssignStaff(issue)} className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 text-xs font-bold rounded-xl">
+                                            <UserPlus className="w-3 h-3" /> Assign
+                                        </button>
+                                    )}
+                                    {issue.status === 'Pending' && (
+                                        <button onClick={() => handleRejectIssue(issue)} className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-xs font-bold rounded-xl">
+                                            <XCircle className="w-3 h-3" /> Reject
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        )) : <p className="py-10 text-center text-sm text-gray-400 dark:text-gray-500">No issues found</p>}
                     </div>
+                </SectionCard>
 
-                    <div className="overflow-x-auto">
+                {/* ── Recent Payments ── */}
+                <SectionCard
+                    title="Recent Payments"
+                    sub="Last 3 transactions"
+                    action={() => navigate('/dashboard/paymentsPage')}
+                    actionLabel="View All Payments"
+                    delay={0.4}
+                    topBar="from-emerald-500 to-teal-500"
+                >
+                    {/* Desktop */}
+                    <div className="hidden md:block overflow-x-auto">
                         <table className="w-full">
                             <thead>
-                                <tr className="bg-gray-50">
-                                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">User</th>
-                                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Email</th>
-                                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Status</th>
-                                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Joined</th>
-                                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Blocked</th>
-                                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
+                                <tr className="border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-700/30">
+                                    {['Transaction ID', 'User Email', 'Amount', 'Type', 'Date', 'Actions'].map(h => (
+                                        <th key={h} className="py-3 px-5 text-left text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest whitespace-nowrap">{h}</th>
+                                    ))}
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200">
-                                {latestUsers.length > 0 ? (
-                                    latestUsers.map((sing, index) => (
-                                        <tr key={index} className="hover:bg-gray-50">
-                                            <td className="px-5 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    {sing.photoURL ? (
-                                                        <img
-                                                            src={sing.photoURL}
-                                                            alt={sing.name}
-                                                            className="w-12 h-12 rounded-full object-cover"
-                                                        />
-                                                    ) : (
-                                                        <div className="w-12 h-12 bg-linear-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                                                            {sing.name?.charAt(0) || 'U'}
-                                                        </div>
-                                                    )}
-                                                    <div className="text-sm font-medium text-gray-900">
-                                                        {sing.name || 'Unknown User'}
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-5 py-4">
-                                                <div className="text-sm text-gray-700 truncate max-w-xs">
-                                                    {sing.email || 'N/A'}
-                                                </div>
-                                            </td>
-                                            <td className="px-5 py-4">
-                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${sing.isPremium
-                                                    ? 'bg-green-100 text-green-800'
-                                                    : 'bg-red-100 text-red-800'
-                                                    }`}>
-                                                    {sing.isPremium ? 'Premium' : 'Regular'}
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-4 text-sm text-gray-600">
-                                                {formatDate(sing.memberSince)}
-                                            </td>
-                                            <td className="px-5 py-4">
-                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${sing.isBlocked
-                                                    ? 'bg-red-100 text-red-800'
-                                                    : 'bg-green-100 text-green-800'
-                                                    }`}>
-                                                    {sing.isBlocked ? 'YES' : 'N0'}
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-4">
-                                                <button
-                                                    onClick={() => handleToggleBlock(sing)}
-                                                    disabled={updateUserStatusMutation.isLoading}
-                                                    className={`
-    relative inline-flex items-center px-4 py-2 rounded-lg font-medium text-sm
-    transition-all duration-200 ease-in-out
-    focus:outline-none focus:ring-2 focus:ring-offset-2
-    disabled:opacity-50 disabled:cursor-not-allowed
-    ${!sing.isBlocked
-                                                            ? 'bg-linear-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700 focus:ring-red-500 shadow-md hover:shadow-lg'
-                                                            : 'bg-linear-to-r from-emerald-500 to-emerald-600 text-white hover:from-emerald-600 hover:to-emerald-700 focus:ring-emerald-500 shadow-md hover:shadow-lg'
-                                                        }
-  `}
-                                                >
-                                                    <span className="flex items-center gap-2">
-                                                        {updateUserStatusMutation.isLoading ? (
-                                                            <>
-                                                                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                                </svg>
-                                                                Processing...
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                {!sing.isBlocked ? (
-                                                                    <>
-                                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
-                                                                        </svg>
-                                                                        Block User
-                                                                    </>
-                                                                ) : (
-                                                                    <>
-                                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                                                        </svg>
-                                                                        Unblock User
-                                                                    </>
-                                                                )}
-                                                            </>
-                                                        )}
-                                                    </span>
+                            <tbody>
+                                {latestPayments.length > 0 ? latestPayments.map((payment, i) => (
+                                    <tr key={i} className="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50/50 dark:hover:bg-gray-700/20 transition-colors">
+                                        <td className="py-4 px-5">
+                                            <span className="text-xs font-mono font-bold text-gray-700 dark:text-gray-300 truncate block max-w-[120px]">{payment.transactionId || `PAY-${i + 1}`}</span>
+                                        </td>
+                                        <td className="py-4 px-5">
+                                            <span className="text-xs text-gray-600 dark:text-gray-400 truncate block max-w-[160px]">{payment.customerEmail || '—'}</span>
+                                        </td>
+                                        <td className="py-4 px-5">
+                                            <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatCurrency(payment.amount)}</span>
+                                        </td>
+                                        <td className="py-4 px-5">
+                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-xl text-xs font-bold border ${payment.type === 'Premium Subscription'
+                                                    ? 'bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-400 border-violet-200 dark:border-violet-800'
+                                                    : payment.type === 'Boost Issue'
+                                                        ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800'
+                                                        : 'bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-600'
+                                                }`}>
+                                                {payment.type || 'Unknown'}
+                                            </span>
+                                        </td>
+                                        <td className="py-4 px-5">
+                                            <span className="text-xs text-gray-500 dark:text-gray-400">{formatDate(payment.paidAt)}</span>
+                                        </td>
+                                        <td className="py-4 px-5">
+                                            <div className="flex items-center gap-1.5">
+                                                <button onClick={() => { setSelectedPayment(payment); setShowReceiptModal(true); }}
+                                                    className="p-2 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors">
+                                                    <Download className="w-3.5 h-3.5" />
                                                 </button>
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan="6" className="px-5 py-8 text-center text-gray-500">
-                                            No users found
+                                                <button onClick={() => handleDeleteClick(payment)} disabled={deleteMutation.isLoading}
+                                                    className="p-2 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50">
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
-                                )}
+                                )) : <tr><td colSpan={6} className="py-10 text-center text-sm text-gray-400 dark:text-gray-500">No payments found</td></tr>}
                             </tbody>
                         </table>
                     </div>
 
-                </motion.div>
+                    {/* Mobile */}
+                    <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-700">
+                        {latestPayments.length > 0 ? latestPayments.map((payment, i) => (
+                            <div key={i} className="p-4 space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-mono font-bold text-gray-700 dark:text-gray-300">{payment.transactionId || `PAY-${i + 1}`}</span>
+                                    <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatCurrency(payment.amount)}</span>
+                                </div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">{payment.customerEmail || '—'}</p>
+                                <div className="flex items-center justify-between">
+                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-xl text-xs font-bold border ${payment.type === 'Premium Subscription' ? 'bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-400 border-violet-200 dark:border-violet-800'
+                                            : 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800'
+                                        }`}>{payment.type || 'Unknown'}</span>
+                                    <div className="flex gap-1.5">
+                                        <button onClick={() => { setSelectedPayment(payment); setShowReceiptModal(true); }} className="p-2 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"><Download className="w-3.5 h-3.5" /></button>
+                                        <button onClick={() => handleDeleteClick(payment)} className="p-2 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                                    </div>
+                                </div>
+                            </div>
+                        )) : <p className="py-10 text-center text-sm text-gray-400 dark:text-gray-500">No payments found</p>}
+                    </div>
+                </SectionCard>
+
+                {/* ── Recent Users ── */}
+                <SectionCard
+                    title="New Users"
+                    sub="Recently joined citizens"
+                    action={() => navigate('/dashboard/manageUsers')}
+                    actionLabel="View All Users"
+                    delay={0.45}
+                    topBar="from-fuchsia-500 to-pink-500"
+                >
+                    {/* Desktop */}
+                    <div className="hidden md:block overflow-x-auto">
+                        <table className="w-full">
+                            <thead>
+                                <tr className="border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-700/30">
+                                    {['User', 'Email', 'Plan', 'Joined', 'Blocked', 'Actions'].map(h => (
+                                        <th key={h} className="py-3 px-5 text-left text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">{h}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {latestUsers.length > 0 ? latestUsers.map((sing, i) => (
+                                    <tr key={i} className="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50/50 dark:hover:bg-gray-700/20 transition-colors">
+                                        <td className="py-4 px-5">
+                                            <div className="flex items-center gap-2.5">
+                                                {sing.photoURL ? (
+                                                    <img src={sing.photoURL} alt={sing.name} className="w-8 h-8 rounded-full object-cover border-2 border-gray-100 dark:border-gray-700" />
+                                                ) : (
+                                                    <div className="w-8 h-8 bg-linear-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                                                        {sing.name?.charAt(0) || 'U'}
+                                                    </div>
+                                                )}
+                                                <span className="text-sm font-bold text-gray-900 dark:text-white">{sing.name || 'Unknown'}</span>
+                                            </div>
+                                        </td>
+                                        <td className="py-4 px-5">
+                                            <span className="text-xs text-gray-500 dark:text-gray-400 truncate block max-w-[160px]">{sing.email || '—'}</span>
+                                        </td>
+                                        <td className="py-4 px-5">
+                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-xl text-xs font-bold border ${sing.isPremium
+                                                    ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800'
+                                                    : 'bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-600'
+                                                }`}>
+                                                {sing.isPremium ? '⭐ Premium' : 'Regular'}
+                                            </span>
+                                        </td>
+                                        <td className="py-4 px-5">
+                                            <span className="text-xs text-gray-500 dark:text-gray-400">{formatDate(sing.memberSince)}</span>
+                                        </td>
+                                        <td className="py-4 px-5">
+                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-xl text-xs font-bold border ${sing.isBlocked
+                                                    ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800'
+                                                    : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
+                                                }`}>
+                                                {sing.isBlocked ? 'Blocked' : 'Active'}
+                                            </span>
+                                        </td>
+                                        <td className="py-4 px-5">
+                                            <button onClick={() => handleToggleBlock(sing)} disabled={updateUserStatusMutation.isLoading}
+                                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all disabled:opacity-50 ${sing.isBlocked
+                                                        ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40'
+                                                        : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/40'
+                                                    }`}>
+                                                {sing.isBlocked ? <><CheckCircle2 className="w-3 h-3" /> Unblock</> : <><Ban className="w-3 h-3" /> Block</>}
+                                            </button>
+                                        </td>
+                                    </tr>
+                                )) : <tr><td colSpan={6} className="py-10 text-center text-sm text-gray-400 dark:text-gray-500">No users found</td></tr>}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Mobile */}
+                    <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-700">
+                        {latestUsers.length > 0 ? latestUsers.map((sing, i) => (
+                            <div key={i} className="p-4 space-y-2">
+                                <div className="flex items-center gap-2.5">
+                                    {sing.photoURL ? (
+                                        <img src={sing.photoURL} alt={sing.name} className="w-9 h-9 rounded-full object-cover" />
+                                    ) : (
+                                        <div className="w-9 h-9 bg-linear-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                                            {sing.name?.charAt(0) || 'U'}
+                                        </div>
+                                    )}
+                                    <div>
+                                        <p className="text-sm font-bold text-gray-900 dark:text-white">{sing.name || 'Unknown'}</p>
+                                        <p className="text-xs text-gray-400 dark:text-gray-500">{sing.email}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex gap-1.5 flex-wrap">
+                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-xl text-xs font-bold border ${sing.isPremium ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+                                            {sing.isPremium ? '⭐ Premium' : 'Regular'}
+                                        </span>
+                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-xl text-xs font-bold border ${sing.isBlocked ? 'bg-red-50 text-red-700 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+                                            {sing.isBlocked ? 'Blocked' : 'Active'}
+                                        </span>
+                                    </div>
+                                    <button onClick={() => handleToggleBlock(sing)} className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold border ${sing.isBlocked ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                                        {sing.isBlocked ? <><CheckCircle2 className="w-3 h-3" />Unblock</> : <><Ban className="w-3 h-3" />Block</>}
+                                    </button>
+                                </div>
+                            </div>
+                        )) : <p className="py-10 text-center text-sm text-gray-400 dark:text-gray-500">No users found</p>}
+                    </div>
+                </SectionCard>
             </div>
 
-            {/* Delete Confirmation Modal */}
+            {/* ── Modals ── */}
             {showDeleteModal && (
                 <DeleteConfirmationModal
                     payment={selectedPayment}
-                    onClose={() => {
-                        setShowDeleteModal(false);
-                        setSelectedPayment(null);
-                    }}
+                    onClose={() => { setShowDeleteModal(false); setSelectedPayment(null); }}
                     onConfirm={confirmDelete}
                     isLoading={deleteMutation.isLoading}
                 />
             )}
 
-            {/* Receipt Modal */}
             {showReceiptModal && (
                 <PaymentReceiptModal
                     payment={selectedPayment}
-                    onClose={() => {
-                        setShowReceiptModal(false);
-                        setSelectedPayment(null);
-                    }}
+                    onClose={() => { setShowReceiptModal(false); setSelectedPayment(null); }}
                 />
             )}
 
             {/* Assign Staff Modal */}
-            {showAssignModal && (
-                <div className="modal modal-open">
-                    <div className="modal-backdrop bg-black/50" onClick={() => setShowAssignModal(false)}></div>
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        className="modal-box max-w-md p-0 overflow-hidden bg-white border border-gray-200 shadow-xl"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        {/* Modal Header */}
-                        <div className="bg-linear-to-r from-green-50 to-emerald-50 p-6 border-b border-gray-200">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-linear-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center shadow-sm">
-                                        <FaUserPlus className="w-6 h-6 text-white" />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-2xl font-bold text-gray-900">Assign Staff</h3>
-                                        <p className="text-gray-600">Assign staff to: {selectedIssue?.title}</p>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => setShowAssignModal(false)}
-                                    className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-all flex items-center justify-center"
-                                >
-                                    ✕
-                                </button>
-                            </div>
-                        </div>
+            <AnimatePresence>
+                {showAssignModal && (
+                    <>
+                        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40" onClick={() => setShowAssignModal(false)} />
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: 16 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: 16 }}
+                                transition={{ duration: 0.2 }}
+                                className="w-full max-w-md bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-2xl overflow-hidden"
+                                onClick={e => e.stopPropagation()}
+                            >
+                                {/* Modal top bar */}
+                                <div className="h-1 bg-linear-to-r from-emerald-500 to-teal-500" />
 
-                        {/* Modal Content */}
-                        <div className="p-6">
-                            {staffsLoading ? (
-                                <div className="flex items-center justify-center py-8">
-                                    <div className="w-8 h-8 border-2 border-gray-300 border-t-green-500 rounded-full animate-spin"></div>
-                                </div>
-                            ) : (
-                                <div className="space-y-6">
-                                    {/* Staff Selection */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                                            Select Staff Member *
-                                        </label>
-                                        <select
-                                            value={selectedStaffId}
-                                            onChange={(e) => setSelectedStaffId(e.target.value)}
-                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
-                                            disabled={staffs.length === 0}
-                                        >
-                                            <option value="">Select a staff member</option>
-                                            {staffs.map((staff) => (
-                                                <option key={staff._id} value={staff._id}>
-                                                    {staff.name} - {staff.email}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        {staffs.length === 0 && (
-                                            <p className="mt-2 text-sm text-amber-600">No active staff members available</p>
-                                        )}
-                                        <p className="mt-2 text-sm text-gray-500">
-                                            {staffs.length} available staff member(s)
-                                        </p>
-                                    </div>
-
-                                    {/* Selected Staff Preview */}
-                                    {selectedStaffId && (
-                                        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                                            <div className="flex items-center gap-3 mb-3">
-                                                <div className="w-12 h-12 bg-linear-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center text-white font-bold">
-                                                    {staffs.find(s => s._id === selectedStaffId)?.name?.charAt(0) || 'S'}
-                                                </div>
-                                                <div>
-                                                    <div className="font-medium text-gray-900">
-                                                        {staffs.find(s => s._id === selectedStaffId)?.name}
-                                                    </div>
-                                                    <div className="text-sm text-gray-600">
-                                                        {staffs.find(s => s._id === selectedStaffId)?.email}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <p className="text-sm text-gray-600">
-                                                This staff member will be assigned to handle the issue.
-                                            </p>
+                                {/* Modal header */}
+                                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-9 h-9 bg-linear-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center shadow-md">
+                                            <UserPlus className="w-4 h-4 text-white" />
                                         </div>
-                                    )}
-
-                                    {/* Action Buttons */}
-                                    <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowAssignModal(false)}
-                                            className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-all"
-                                            disabled={assignStaffMutation.isPending}
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            onClick={handleConfirmAssignment}
-                                            disabled={!selectedStaffId || assignStaffMutation.isPending}
-                                            className={`px-8 py-3 bg-linear-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg font-semibold shadow-sm hover:shadow transition-all ${(!selectedStaffId || assignStaffMutation.isPending) ? 'opacity-70 cursor-not-allowed' : ''
-                                                }`}
-                                        >
-                                            {assignStaffMutation.isPending ? (
-                                                <span className="flex items-center gap-2">
-                                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                                    Assigning...
-                                                </span>
-                                            ) : (
-                                                'Confirm Assignment'
-                                            )}
-                                        </button>
+                                        <div>
+                                            <h3 className="text-sm font-bold text-gray-900 dark:text-white">Assign Staff</h3>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1">{selectedIssue?.title}</p>
+                                        </div>
                                     </div>
+                                    <button onClick={() => setShowAssignModal(false)}
+                                        className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center justify-center transition-colors">
+                                        <X className="w-4 h-4" />
+                                    </button>
                                 </div>
-                            )}
+
+                                {/* Modal body */}
+                                <div className="p-5 space-y-4">
+                                    {staffsLoading ? (
+                                        <div className="flex items-center justify-center py-10">
+                                            <div className="w-8 h-8 border-2 border-gray-200 dark:border-gray-600 border-t-emerald-500 rounded-full animate-spin" />
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+                                                    Select Staff Member
+                                                </label>
+                                                <select
+                                                    value={selectedStaffId}
+                                                    onChange={e => setSelectedStaffId(e.target.value)}
+                                                    disabled={staffs.length === 0}
+                                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/60 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all"
+                                                >
+                                                    <option value="">Choose a staff member…</option>
+                                                    {staffs.map(s => (
+                                                        <option key={s._id} value={s._id}>{s.name} — {s.email}</option>
+                                                    ))}
+                                                </select>
+                                                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">{staffs.length} staff available</p>
+                                            </div>
+
+                                            {/* Staff preview */}
+                                            {selectedStaffId && (() => {
+                                                const s = staffs.find(x => x._id === selectedStaffId);
+                                                return s ? (
+                                                    <div className="flex items-center gap-3 p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl">
+                                                        <div className="w-9 h-9 bg-linear-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center text-white text-sm font-bold">
+                                                            {s.name?.charAt(0) || 'S'}
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-bold text-gray-900 dark:text-white">{s.name}</p>
+                                                            <p className="text-xs text-gray-500 dark:text-gray-400">{s.email}</p>
+                                                        </div>
+                                                    </div>
+                                                ) : null;
+                                            })()}
+
+                                            {/* Buttons */}
+                                            <div className="flex gap-2 pt-2">
+                                                <button onClick={() => setShowAssignModal(false)} disabled={assignStaffMutation.isPending}
+                                                    className="flex-1 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                                    Cancel
+                                                </button>
+                                                <button onClick={handleConfirmAssignment} disabled={!selectedStaffId || assignStaffMutation.isPending}
+                                                    className="flex-1 py-2.5 bg-linear-to-r from-emerald-500 to-teal-500 text-white text-sm font-bold rounded-xl shadow-md hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2">
+                                                    {assignStaffMutation.isPending ? (
+                                                        <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Assigning…</>
+                                                    ) : (
+                                                        <><UserPlus className="w-4 h-4" /> Confirm</>
+                                                    )}
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </motion.div>
                         </div>
-                    </motion.div>
-                </div>
-            )}
+                    </>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

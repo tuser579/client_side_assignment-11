@@ -6,89 +6,48 @@ import { motion, AnimatePresence } from 'framer-motion';
 import useAuth from '../../hooks/useAuth';
 import Swal from 'sweetalert2';
 import {
-  HiFilter,
-  HiSearch,
-  HiOutlinePencilAlt,
-  HiOutlineTrash,
-  HiOutlineEye,
-  HiOutlineClock,
-  HiOutlineCheckCircle,
-  HiOutlineExclamationCircle,
-  HiOutlineXCircle,
-  HiOutlineFire,
-  HiOutlinePhotograph,
-  HiOutlineLocationMarker,
-  HiOutlineCalendar,
-  HiOutlineDocumentText,
-  HiOutlineLightningBolt,
-  HiOutlineRefresh,
-  HiOutlineExclamation,
-  HiOutlineBookmark,
-  HiOutlineChevronLeft,
-  HiOutlineChevronRight,
-  HiOutlineChevronDoubleLeft,
-  HiOutlineChevronDoubleRight,
-  HiOutlineCog,
-  HiOutlineLockClosed
+  HiFilter, HiSearch, HiOutlinePencilAlt, HiOutlineTrash, HiOutlineEye,
+  HiOutlineClock, HiOutlineCheckCircle, HiOutlineExclamationCircle,
+  HiOutlineXCircle, HiOutlinePhotograph, HiOutlineLocationMarker,
+  HiOutlineCalendar, HiOutlineDocumentText, HiOutlineLightningBolt,
+  HiOutlineRefresh, HiOutlineExclamation, HiOutlineBookmark,
+  HiOutlineChevronLeft, HiOutlineChevronRight,
+  HiOutlineChevronDoubleLeft, HiOutlineChevronDoubleRight,
+  HiOutlineCog, HiOutlineLockClosed, HiOutlineThumbUp, HiOutlineUser
 } from 'react-icons/hi';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Zap } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
+import MyIssuesPageSkeleton from '../../Components/MyIssuesPageSkeleton';
 
+const ITEMS_PER_PAGE = 12;
 
 const MyIssuesPage = () => {
-  const axiosSecure = useAxiosSecure();
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const axiosSecure  = useAxiosSecure();
+  const navigate     = useNavigate();
+  const queryClient  = useQueryClient();
+  const { user }     = useAuth();
 
-  const [filters, setFilters] = useState({
-    status: 'all',
-    category: 'all',
-    priority: 'all',
-    search: ''
-  });
+  const [filters,        setFilters]        = useState({ status: 'all', category: 'all', priority: 'all', search: '' });
+  const [editingIssue,   setEditingIssue]   = useState(null);
+  const [showEditModal,  setShowEditModal]  = useState(false);
+  const [formData,       setFormData]       = useState({ title: '', description: '', category: '', priority: '', location: '', images: [] });
+  const [currentPage,    setCurrentPage]    = useState(1);
 
-  const [editingIssue, setEditingIssue] = useState(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    category: '',
-    priority: '',
-    location: '',
-    images: []
-  });
-
-  // Pagination states
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(9); // Changed to 9 to fit 3 columns nicely
-
-  const {
-    data = {},
-    isLoading,
-    isError,
-    error,
-    refetch
-  } = useQuery({
+  /* ── fetch ── */
+  const { data = {}, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['userData', user?.email],
     enabled: !!user?.email,
     queryFn: async () => {
-      // Execute both requests in parallel
       const [issuesRes, userRes] = await Promise.all([
         axiosSecure.get(`/myIssues?email=${user?.email}`),
         axiosSecure.get(`/singleUser?email=${user?.email}`)
       ]);
-
-      return {
-        issues: issuesRes.data,
-        users: userRes.data
-      };
+      return { issues: issuesRes.data, users: userRes.data };
     }
   });
-
   const { issues = [], users: singUser = {} } = data;
 
-  // Update issue mutation
+  /* ── mutations ── */
   const updateIssueMutation = useMutation({
     mutationFn: async ({ id, data }) => {
       const res = await axiosSecure.patch(`/myIssueUpdate/${id}`, data);
@@ -101,618 +60,255 @@ const MyIssuesPage = () => {
     }
   });
 
-  // Delete issue mutation
   const deleteIssueMutation = useMutation({
     mutationFn: async (id) => {
       const res = await axiosSecure.delete(`/myIssueDelete/${id}`);
       return res.data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries(['myIssues', user?.email]);
-    }
+    onSuccess: () => queryClient.invalidateQueries(['myIssues', user?.email])
   });
 
-  // Filter issues
+  /* ── filter / paginate ── */
   const filteredIssues = issues.filter(issue => {
-    if (filters.status !== 'all' && issue.status !== filters.status) return false;
+    if (filters.status   !== 'all' && issue.status   !== filters.status)   return false;
     if (filters.category !== 'all' && issue.category !== filters.category) return false;
     if (filters.priority !== 'all' && issue.priority !== filters.priority) return false;
-    if (filters.search && !issue.title.toLowerCase().includes(filters.search.toLowerCase())) return false;
+    if (filters.search && !issue.title?.toLowerCase().includes(filters.search.toLowerCase())) return false;
     return true;
   });
 
-  // Calculate total pages
-  const totalPages = Math.ceil(filteredIssues.length / itemsPerPage);
+  const totalPages     = Math.ceil(filteredIssues.length / ITEMS_PER_PAGE);
+  const startIndex     = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedIssues = filteredIssues.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
-  // Calculate paginated issues
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedIssues = filteredIssues.slice(startIndex, endIndex);
-
-  // Pagination functions
-  const goToPage = (pageNumber) => {
-    if (pageNumber >= 1 && pageNumber <= totalPages) {
-      setCurrentPage(pageNumber);
+  const goToPage = (p) => {
+    if (p >= 1 && p <= totalPages) {
+      setCurrentPage(p);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
-  const goToFirstPage = () => goToPage(1);
-  const goToLastPage = () => goToPage(totalPages);
-  const goToNextPage = () => goToPage(currentPage + 1);
-  const goToPreviousPage = () => goToPage(currentPage - 1);
-
-  // Handle items per page change
-  const handleItemsPerPageChange = (value) => {
-    setItemsPerPage(parseInt(value));
-    setCurrentPage(1); // Reset to first page when changing items per page
-  };
-
-  // Generate page numbers for pagination
   const generatePageNumbers = () => {
-    const pageNumbers = [];
-    const maxVisiblePages = 5;
-
-    if (totalPages <= maxVisiblePages) {
-      // Show all pages if total pages are less than or equal to maxVisiblePages
-      for (let i = 1; i <= totalPages; i++) {
-        pageNumbers.push(i);
-      }
+    const pages = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
     } else {
-      // Show first page, last page, and pages around current page
-      let startPage = Math.max(2, currentPage - 1);
-      let endPage = Math.min(totalPages - 1, currentPage + 1);
-
-      // Adjust if we're at the beginning
-      if (currentPage <= 2) {
-        startPage = 2;
-        endPage = 4;
-      }
-
-      // Adjust if we're at the end
-      if (currentPage >= totalPages - 1) {
-        startPage = totalPages - 3;
-        endPage = totalPages - 1;
-      }
-
-      pageNumbers.push(1);
-
-      // Add ellipsis if needed
-      if (startPage > 2) {
-        pageNumbers.push('...');
-      }
-
-      // Add middle pages
-      for (let i = startPage; i <= endPage; i++) {
-        pageNumbers.push(i);
-      }
-
-      // Add ellipsis if needed
-      if (endPage < totalPages - 1) {
-        pageNumbers.push('...');
-      }
-
-      pageNumbers.push(totalPages);
+      let start = Math.max(2, currentPage - 1);
+      let end   = Math.min(totalPages - 1, currentPage + 1);
+      if (currentPage <= 2)              { start = 2; end = 4; }
+      if (currentPage >= totalPages - 1) { start = totalPages - 3; end = totalPages - 1; }
+      pages.push(1);
+      if (start > 2) pages.push('...');
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (end < totalPages - 1) pages.push('...');
+      pages.push(totalPages);
     }
-
-    return pageNumbers;
+    return pages;
   };
 
-  // Get status config - UPDATED with safety checks
+  /* ── config helpers ── */
+  const statusConfigs = {
+    'Pending':     { gradient: 'from-amber-500 to-orange-500',   icon: <HiOutlineClock className="w-3.5 h-3.5" />,           text: 'Pending'     },
+    'In-Progress': { gradient: 'from-blue-500 to-cyan-500',      icon: <HiOutlineRefresh className="w-3.5 h-3.5" />,         text: 'In-Progress' },
+    'Working':     { gradient: 'from-violet-500 to-purple-500',  icon: <HiOutlineCog className="w-3.5 h-3.5" />,             text: 'Working'     },
+    'Resolved':    { gradient: 'from-emerald-500 to-teal-500',   icon: <HiOutlineCheckCircle className="w-3.5 h-3.5" />,     text: 'Resolved'    },
+    'Closed':      { gradient: 'from-gray-500 to-gray-600',      icon: <HiOutlineLockClosed className="w-3.5 h-3.5" />,      text: 'Closed'      },
+    'Rejected':    { gradient: 'from-red-500 to-pink-500',       icon: <HiOutlineXCircle className="w-3.5 h-3.5" />,         text: 'Rejected'    },
+  };
+
   const getStatusConfig = (status) => {
-    if (!status) {
-      return {
-        color: 'bg-gray-100',
-        icon: <HiOutlineExclamation className="w-4 h-4 text-gray-500" />,
-        text: 'Unknown'
-      };
-    }
-
-    const configs = {
-      'Pending': {
-        color: 'bg-linear-to-r from-orange-500 to-amber-500',
-        icon: <HiOutlineClock className="w-4 h-4" />,
-        text: 'Pending'
-      },
-      'In-Progress': {
-        color: 'bg-linear-to-r from-blue-500 to-cyan-500',
-        icon: <HiOutlineRefresh className="w-4 h-4" />,
-        text: 'In-Progress'
-      },
-      'Working': {
-        color: 'bg-linear-to-r from-purple-500 to-indigo-500',
-        icon: <HiOutlineCog className="w-4 h-4" />,
-        text: 'Working'
-      },
-      'Resolved': {
-        color: 'bg-linear-to-r from-green-500 to-emerald-500',
-        icon: <HiOutlineCheckCircle className="w-4 h-4" />,
-        text: 'Resolved'
-      },
-      'Closed': {
-        color: 'bg-linear-to-r from-gray-500 to-gray-600',
-        icon: <HiOutlineLockClosed className="w-4 h-4" />,
-        text: 'Closed'
-      },
-      'Rejected': {
-        color: 'bg-linear-to-r from-red-500 to-pink-500',
-        icon: <HiOutlineXCircle className="w-4 h-4" />,
-        text: 'Rejected'
-      }
-    };
-
-    // Handle case-insensitive status
-    const normalizedStatus = Object.keys(configs).find(key =>
-      key.toLowerCase() === status.toLowerCase()
-    ) || 'Pending';
-
-    return configs[normalizedStatus] || configs.Pending;
+    const key = Object.keys(statusConfigs).find(k => k.toLowerCase() === (status || '').toLowerCase());
+    return statusConfigs[key] || statusConfigs['Pending'];
   };
 
-  // Get priority config - UPDATED with safety checks
-  const getPriorityConfig = (priority) => {
-    if (!priority) {
-      return {
-        color: 'bg-gray-100',
-        text: 'Normal',
-        icon: <HiOutlineBookmark className="w-4 h-4 text-gray-500" />
-      };
-    }
+  const getPriorityConfig = (priority) => priority === 'High'
+    ? { gradient: 'from-orange-500 to-red-500',  label: 'High',   icon: <HiOutlineExclamationCircle className="w-3.5 h-3.5" /> }
+    : { gradient: 'from-blue-500 to-blue-600',   label: 'Normal', icon: <HiOutlineBookmark className="w-3.5 h-3.5" /> };
 
-    const configs = {
-      'High': {
-        color: 'bg-linear-to-r from-orange-500 to-red-500',
-        text: 'High',
-        icon: <HiOutlineExclamationCircle className="w-4 h-4" />
-      },
-      'Normal': {
-        color: 'bg-linear-to-r from-blue-500 to-blue-600',
-        text: 'Normal',
-        icon: <HiOutlineBookmark className="w-4 h-4" />
-      }
-    };
+  const getCategoryIcon = (cat) => ({
+    'Streetlight': '💡', 'Road_Damage': '🛣️', 'Garbage': '🗑️', 'Footpath': '🚶',
+    'Drainage': '🌊', 'Traffic': '🚦', 'Parks': '🌳', 'Public_Toilet': '🚻',
+    'Noise': '🔇', 'Electricity': '⚡', 'Water_Supply': '💧', 'Sanitation': '♻️',
+    'Infrastructure': '🏗️', 'Other': '❓'
+  })[cat] || '📋';
 
-    // Return matching config or default to Normal
-    return configs[priority] || configs.Normal;
+  const defaultImages = {
+    'Electricity':  'https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=600&q=80',
+    'Water_Supply': 'https://images.unsplash.com/photo-1621452773781-0f992fd1f5c0?w=600&q=80',
+    'Road_Damage':  'https://images.unsplash.com/photo-1542223616-740d5dff7f56?w=600&q=80',
+    'default':      'https://images.unsplash.com/photo-1541746972996-4e0b0f43e02a?w=600&q=80'
   };
+  const getIssueImage = (issue) => issue?.images?.[0] || defaultImages[issue?.category] || defaultImages.default;
 
-  // Get category icon - UPDATED with safety checks
-  const getCategoryIcon = (category) => {
-    if (!category) {
-      return '📋';
-    }
+  /* ── stat cards ── */
+  const statCards = [
+    { label: 'Total',       value: issues.length,                                         color: 'text-blue-600 dark:text-blue-400',    bg: 'bg-blue-50 dark:bg-blue-900/20'   },
+    { label: 'Pending',     value: issues.filter(i => i.status === 'Pending').length,     color: 'text-amber-600 dark:text-amber-400',  bg: 'bg-amber-50 dark:bg-amber-900/20' },
+    { label: 'In-Progress', value: issues.filter(i => i.status === 'In-Progress').length, color: 'text-blue-600 dark:text-blue-400',    bg: 'bg-blue-50 dark:bg-blue-900/20'   },
+    { label: 'Working',     value: issues.filter(i => i.status === 'Working').length,     color: 'text-violet-600 dark:text-violet-400',bg: 'bg-violet-50 dark:bg-violet-900/20'},
+    { label: 'Resolved',    value: issues.filter(i => i.status === 'Resolved').length,    color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
+    { label: 'Closed',      value: issues.filter(i => i.status === 'Closed').length,      color: 'text-gray-600 dark:text-gray-400',    bg: 'bg-gray-100 dark:bg-gray-700/40'  },
+    { label: 'Rejected',    value: issues.filter(i => i.status === 'Rejected').length,    color: 'text-red-600 dark:text-red-400',      bg: 'bg-red-50 dark:bg-red-900/20'     },
+    { label: 'Boosted',     value: issues.filter(i => i.isBoosted).length,               color: 'text-yellow-600 dark:text-yellow-400',bg: 'bg-yellow-50 dark:bg-yellow-900/20'},
+  ];
 
-    const icons = {
-      'Streetlight': '💡',
-      'Road_Damage': '🛣️',
-      'Garbage': '🗑️',
-      'Footpath': '🚶',
-      'Drainage': '🌊',
-      'Traffic': '🚦',
-      'Parks': '🌳',
-      'Public_Toilet': '🚻',
-      'Noise': '🔇',
-      'Electricity': '💡',
-      'Water_Supply': '💧',
-      'Sanitation': '🗑️',
-      'Infrastructure': '🏗️',
-      'Other': '❓'
-    };
-
-    return icons[category] || '📋';
-  };
-
-  // Handle edit
+  /* ── handlers ── */
   const handleEdit = (issue) => {
-    // Check if user is blocked 
-    if (singUser?.isBlocked) {
-      toast.error('Your account is blocked. You cannot edit this issue.');
-      return;
-    }
-
-    // Check if issue exists and has status
-    if (!issue || issue.status !== 'Pending') {
-      toast.error('This issue cannot be edited.');
-      return;
-    }
-
+    if (singUser?.isBlocked) { toast.error('Your account is blocked.'); return; }
+    if (!issue || issue.status !== 'Pending') { toast.error('Only pending issues can be edited.'); return; }
     setEditingIssue(issue);
-    setFormData({
-      title: issue.title || '',
-      description: issue.description || '',
-      category: issue.category || '',
-      priority: issue.priority || 'Normal',
-      location: issue.location || '',
-      images: issue.images || []
-    });
+    setFormData({ title: issue.title || '', description: issue.description || '', category: issue.category || '', priority: issue.priority || 'Normal', location: issue.location || '', images: issue.images || [] });
     setShowEditModal(true);
   };
 
-  // Handle delete with SweetAlert2
   const handleDelete = (issueId) => {
-    // Check if user is blocked 
-    if (singUser?.isBlocked) {
-      toast.error('Your account is blocked. You cannot delete this issue.');
-      return;
-    }
-
+    if (singUser?.isBlocked) { toast.error('Your account is blocked.'); return; }
     Swal.fire({
-      title: 'Are you sure?',
-      text: "You won't be able to revert this!",
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
-      confirmButtonText: 'Yes, delete it!',
-      cancelButtonText: 'Cancel',
-      reverseButtons: true,
-      customClass: {
-        confirmButton: 'swal2-confirm-btn',
-        cancelButton: 'swal2-cancel-btn'
-      }
-    }).then((result) => {
+      title: 'Delete this issue?', text: 'This action cannot be undone.', icon: 'warning',
+      showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Yes, delete', reverseButtons: true
+    }).then(result => {
       if (result.isConfirmed) {
         deleteIssueMutation.mutate(issueId, {
-          onSuccess: () => {
-            Swal.fire({
-              title: 'Deleted!',
-              text: 'The issue has been deleted.',
-              icon: 'success',
-              timer: 2000,
-              showConfirmButton: false,
-              toast: true,
-              position: 'center'
-            });
-          },
-          onError: (error) => {
-            Swal.fire({
-              title: 'Error!',
-              text: error.message || 'Failed to delete the issue.',
-              icon: 'error',
-              confirmButtonText: 'OK'
-            });
-          }
+          onSuccess: () => Swal.fire({ title: 'Deleted!', icon: 'success', timer: 2000, showConfirmButton: false }),
+          onError:   (e) => Swal.fire({ title: 'Error!',   text: e.message, icon: 'error' })
         });
       }
     });
   };
 
-  // Handle form submit with SweetAlert2
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (editingIssue) {
-      try {
-        // Show loading indicator
-        Swal.fire({
-          title: 'Updating Issue...',
-          text: 'Please wait while we update the issue.',
-          allowOutsideClick: false,
-          didOpen: () => {
-            Swal.showLoading();
-          }
-        });
-
-        // Execute the mutation
-        await updateIssueMutation.mutateAsync({
-          id: editingIssue._id,
-          data: formData
-        });
-
-        // Close loading and show success
-        Swal.fire({
-          title: 'Success!',
-          text: 'Issue updated successfully.',
-          icon: 'success',
-          confirmButtonColor: '#3085d6',
-          confirmButtonText: 'OK',
-          timer: 2000,
-          timerProgressBar: true
-        });
-
-      } catch (error) {
-        // Close loading and show error
-        Swal.fire({
-          title: 'Error!',
-          text: error.message || 'Failed to update the issue. Please try again.',
-          icon: 'error',
-          confirmButtonColor: '#d33',
-          confirmButtonText: 'Try Again'
-        });
-      }
+    if (!editingIssue) return;
+    Swal.fire({ title: 'Updating...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    try {
+      await updateIssueMutation.mutateAsync({ id: editingIssue._id, data: formData });
+      Swal.fire({ title: 'Updated!', icon: 'success', timer: 2000, showConfirmButton: false });
+    } catch (e) {
+      Swal.fire({ title: 'Error!', text: e.message, icon: 'error' });
     }
   };
 
-  // Handle form change
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
+  const inputCls  = "w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/60 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all disabled:opacity-50";
+  const selectCls = "px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all";
 
-  // Get first image from array or default - UPDATED with safety checks
-  const getIssueImage = (issue) => {
-    // Check if issue exists
-    if (!issue) {
-      return 'https://images.unsplash.com/photo-1541746972996-4e0b0f43e02a?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80';
-    }
+  /* ── loading / error ── */
+  if (isLoading) return <MyIssuesPageSkeleton />;
 
-    // Check if images array exists and has at least one valid image
-    if (issue.images && Array.isArray(issue.images) && issue.images.length > 0) {
-      const firstImage = issue.images[0];
-      if (firstImage && typeof firstImage === 'string' && firstImage.trim() !== '') {
-        return firstImage;
-      }
-    }
-
-    // Default images based on category
-    const defaultImages = {
-      'Electricity': 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-      'Water_Supply': 'https://images.unsplash.com/photo-1621452773781-0f992fd1f5c0?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-      'Road_Damage': 'https://images.unsplash.com/photo-1542223616-740d5dff7f56?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-      'Sanitation': 'https://images.unsplash.com/photo-1578558288136-7207e7747ba6?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-      'Infrastructure': 'https://images.unsplash.com/photo-1544457070-4cd773b4d71e?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-      'Streetlight': 'https://images.unsplash.com/photo-1517322048670-4fba75cbbb62?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-      'Garbage': 'https://images.unsplash.com/photo-1578558288136-7207e7747ba6?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-      'Footpath': 'https://images.unsplash.com/photo-1542223616-740d5dff7f56?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-      'Drainage': 'https://images.unsplash.com/photo-1621452773781-0f992fd1f5c0?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-      'Traffic': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-      'Parks': 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-      'Public_Toilet': 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-      'Noise': 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-      'Other': 'https://images.unsplash.com/photo-1541746972996-4e0b0f43e02a?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-      'default': 'https://images.unsplash.com/photo-1541746972996-4e0b0f43e02a?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80'
-    };
-
-    return defaultImages[issue.category] || defaultImages.default;
-  };
-
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mb-4"></div>
-        <p className="text-gray-600">Loading your issues...</p>
-      </div>
-    );
-  }
-
-  // Error state
-  if (isError) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-8">
-        <div className="w-20 h-20 bg-red-100 rounded-2xl flex items-center justify-center mb-4">
-          <HiOutlineExclamation className="w-10 h-10 text-red-500" />
+  if (isError) return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-8">
+      <div className="text-center">
+        <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <HiOutlineExclamation className="w-8 h-8 text-red-500" />
         </div>
-        <h3 className="text-xl font-semibold text-gray-900 mb-2">Failed to load issues</h3>
-        <p className="text-gray-600 mb-6 text-center max-w-md">
-          {error?.message || 'An error occurred while loading your issues.'}
-        </p>
-        <button
-          onClick={() => refetch()}
-          className="px-6 py-3 bg-linear-to-r from-blue-600 to-blue-700 text-white rounded-2xl hover:from-blue-700 hover:to-blue-800 transition-all duration-300 flex items-center space-x-2"
-        >
-          <HiOutlineRefresh className="w-5 h-5" />
-          <span>Try Again</span>
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Failed to load issues</h3>
+        <p className="text-gray-500 dark:text-gray-400 text-sm mb-5">{error?.message || 'Something went wrong.'}</p>
+        <button onClick={() => refetch()} className="inline-flex items-center gap-2 px-5 py-2.5 bg-linear-to-r from-blue-600 to-purple-600 text-white text-sm font-bold rounded-xl hover:scale-[1.02] transition-all shadow-lg">
+          <HiOutlineRefresh className="w-4 h-4" /> Try Again
         </button>
       </div>
-    );
-  }
+    </div>
+  );
 
+  /* ══════════════════════════════════════════════════════════ RENDER */
   return (
-    <div className="min-h-screen bg-linear-to-br from-gray-50 to-blue-50/30 p-4 md:p-6 lg:p-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 lg:p-8 transition-colors duration-300">
+      <Toaster position="top-center" toastOptions={{ style: { background: '#1f2937', color: '#fff', borderRadius: '12px' } }} />
 
-      <Toaster
-        position="top-center"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: '#363636',
-            color: '#fff',
-          },
-        }}
-      />
+      <div className="max-w-8xl mx-auto">
 
-      {/* Blocked User Warning */}
-      {singUser?.isBlocked && (
-        <div className="mb-6">
-          <div className="alert alert-error shadow-lg">
-            <AlertCircle className="w-6 h-6" />
+        {/* ── Blocked Warning ── */}
+        {singUser?.isBlocked && (
+          <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-4 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
             <div>
-              <h3 className="font-bold">Account Blocked</h3>
-              <div className="text-xs">
-                Your account has been temporarily blocked by the administration.
-                Please contact the authorities at{' '}
-                <a href="tel:+8809609333222" className="font-semibold underline">
-                  +880 9609 333222
-                </a>{' '}
-                or email{' '}
-                <a href="mailto:support@infra.gov" className="font-semibold underline">
-                  support@infra.gov
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-                My Reported Issues
-              </h1>
-              <p className="text-gray-600">
-                Track and manage all issues you've reported to the community
+              <p className="font-bold text-red-700 dark:text-red-400 text-sm">Account Blocked</p>
+              <p className="text-red-600 dark:text-red-300 text-xs mt-0.5">
+                Contact <a href="tel:+8809609333222" className="underline font-semibold">+880 9609 333222</a> or{' '}
+                <a href="mailto:support@infra.gov" className="underline font-semibold">support@infra.gov</a>
               </p>
             </div>
-            <div className="mt-4 md:mt-0 flex items-center space-x-3">
-              <button
-                onClick={() => navigate('/dashboard/reportIssue')}
-                className="px-6 py-3 bg-linear-to-r from-blue-600 to-purple-600 text-white rounded-2xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl font-medium flex items-center space-x-2"
-              >
-                <HiOutlineLightningBolt className="w-5 h-5" />
-                <span>Report New Issue</span>
-              </button>
-            </div>
           </div>
+        )}
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
-            <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-200">
-              <div className="text-2xl font-bold text-blue-600">{issues.length}</div>
-              <div className="text-sm text-gray-600">Total Issues</div>
-            </div>
-            <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-200">
-              <div className="text-2xl font-bold text-orange-600">
-                {issues.filter(i => i.status === 'Pending').length}
-              </div>
-              <div className="text-sm text-gray-600">Pending</div>
-            </div>
-            <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-200">
-              <div className="text-2xl font-bold text-orange-600">
-                {issues.filter(i => i.status === 'In-Progress').length}
-              </div>
-              <div className="text-sm text-gray-600">In-Progress</div>
-            </div>
-            <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-200">
-              <div className="text-2xl font-bold text-orange-600">
-                {issues.filter(i => i.status === 'Working').length}
-              </div>
-              <div className="text-sm text-gray-600">Working</div>
-            </div>
-            <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-200">
-              <div className="text-2xl font-bold text-green-600">
-                {issues.filter(i => i.status === 'Resolved').length}
-              </div>
-              <div className="text-sm text-gray-600">Resolved</div>
-            </div>
-            <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-200">
-              <div className="text-2xl font-bold text-green-600">
-                {issues.filter(i => i.status === 'Closed').length}
-              </div>
-              <div className="text-sm text-gray-600">Closed</div>
-            </div>
-            <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-200">
-              <div className="text-2xl font-bold text-green-600">
-                {issues.filter(i => i.status === 'Rejected').length}
-              </div>
-              <div className="text-sm text-gray-600">Rejected</div>
-            </div>
-            <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-200">
-              <div className="text-2xl font-bold text-purple-600">
-                {issues.filter(i => i.isBoosted).length}
-              </div>
-              <div className="text-sm text-gray-600">Boosted</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-4 mb-6">
-          <div className="flex flex-col md:flex-row md:items-center space-y-4 md:space-y-0 md:space-x-4">
-            {/* Search */}
-            <div className="flex-1">
-              <div className="relative">
-                <HiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search your issues..."
-                  value={filters.search}
-                  onChange={(e) => {
-                    setFilters({ ...filters, search: e.target.value });
-                    setCurrentPage(1); // Reset to first page when searching
-                  }}
-                  className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-300"
-                />
-              </div>
-            </div>
-
-            {/* Status Filter */}
-            <div className="flex items-center space-x-2">
-              <HiFilter className="w-5 h-5 text-gray-500" />
-              <select
-                value={filters.status}
-                onChange={(e) => {
-                  setFilters({ ...filters, status: e.target.value });
-                  setCurrentPage(1); // Reset to first page when filtering
-                }}
-                className="px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 bg-white"
-              >
-                <option value="all">All Status</option>
-                <option value="Pending">Pending</option>
-                <option value="In-progress">In-Progress</option>
-                <option value="Working">Working</option>
-                <option value="Resolved">Resolved</option>
-                <option value="Closed">Closed</option>
-                <option value="Rejected">Rejected</option>
-              </select>
-            </div>
-
-            {/* Priority Filter */}
-            <select
-              value={filters.priority}
-              onChange={(e) => {
-                setFilters({ ...filters, priority: e.target.value });
-                setCurrentPage(1); // Reset to first page when filtering
-              }}
-              className="px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 bg-white"
-            >
-              <option value="all">All Priority</option>
-              <option value="Normal">Normal</option>
-              <option value="High">High</option>
-            </select>
-
-            {/* Items per page selector */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600 hidden md:inline">Show:</span>
-              <select
-                value={itemsPerPage}
-                onChange={(e) => handleItemsPerPageChange(e.target.value)}
-                className="px-3 py-2 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-300 bg-white text-sm"
-              >
-                <option value="6">6 per page</option>
-                <option value="9">9 per page</option>
-                <option value="12">12 per page</option>
-                <option value="15">15 per page</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Results Count */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+        {/* ── Header ── */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
-            <p className="text-gray-600">
-              Showing <span className="font-semibold">
-                {filteredIssues.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} -{' '}
-                {Math.min(currentPage * itemsPerPage, filteredIssues.length)}
-              </span> of{' '}
-              <span className="font-semibold">{filteredIssues.length}</span> issues
-              {filters.search && ` matching "${filters.search}"`}
+            <h1 className="flex justify-center sm:justify-start text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">
+              My Reported{' '}
+              <span className=" ml-1.5 text-transparent bg-clip-text bg-linear-to-r from-blue-600 to-purple-600">Issues</span>
+            </h1>
+            <p className="flex justify-center sm:justify-start text-gray-500 dark:text-gray-400 text-sm mt-1">
+              Track and manage all issues you've submitted
             </p>
-            <div className="text-sm text-gray-500 mt-1">
-              {filteredIssues.filter(issue => issue.isBoosted).length} boosted issues
-            </div>
           </div>
+          <button
+            onClick={() => navigate('/dashboard/reportIssue')}
+            className="flex justify-center sm:justify-start items-center gap-2 px-4 py-2.5 bg-linear-to-r from-blue-600 to-purple-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-[1.02] transition-all duration-200"
+          >
+            <Zap className="w-4 h-4" /> Report New Issue
+          </button>
+        </div>
 
-          {/* Page info for mobile */}
-          <div className="md:hidden text-sm text-gray-600">
-            Page {currentPage} of {totalPages}
+        {/* ── Stat Cards ── */}
+        <div className="grid grid-cols-4 lg:grid-cols-8 gap-2 sm:gap-3 mb-6">
+          {statCards.map((s, i) => (
+            <div key={i} className={`${s.bg} rounded-xl p-3 sm:p-4 border border-gray-300/50 dark:border-gray-700/50 text-center`}>
+              <p className={`text-xl sm:text-2xl font-black ${s.color}`}>{s.value}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-tight">{s.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Filters ── */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-300 dark:border-gray-700 shadow-sm p-4 mb-5">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex-1 relative">
+              <HiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text" placeholder="Search issues..."
+                value={filters.search}
+                onChange={(e) => { setFilters({ ...filters, search: e.target.value }); setCurrentPage(1); }}
+                className={`${inputCls} pl-10`}
+              />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <select value={filters.status} onChange={(e) => { setFilters({ ...filters, status: e.target.value }); setCurrentPage(1); }} className={selectCls}>
+                <option value="all">All Status</option>
+                {['Pending','In-Progress','Working','Resolved','Closed','Rejected'].map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+              <select value={filters.priority} onChange={(e) => { setFilters({ ...filters, priority: e.target.value }); setCurrentPage(1); }} className={selectCls}>
+                <option value="all">All Priority</option>
+                <option value="Normal">Normal</option>
+                <option value="High">High</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        {/* Issues Grid */}
-        <AnimatePresence>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {paginatedIssues.map((issue, index) => {
-              if (!issue) return null; // Skip if issue is undefined
+        {/* ── Result count ── */}
+        <div className="flex items-center justify-between mb-5">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Showing{' '}
+            <span className="font-semibold text-gray-900 dark:text-white">
+              {filteredIssues.length > 0 ? startIndex + 1 : 0}–{Math.min(startIndex + ITEMS_PER_PAGE, filteredIssues.length)}
+            </span>{' '}
+            of <span className="font-semibold text-gray-900 dark:text-white">{filteredIssues.length}</span> issues
+          </p>
+          <p className="text-sm text-gray-400 dark:text-gray-500">
+            Page {currentPage} / {totalPages || 1} · 12 per page
+          </p>
+        </div>
 
-              const statusConfig = getStatusConfig(issue.status);
-              const priorityConfig = getPriorityConfig(issue.priority);
+        {/* ══ ISSUE GRID — AllIssue card style ══════════════════════════ */}
+        <AnimatePresence>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
+            {paginatedIssues.length > 0 ? paginatedIssues.map((issue, index) => {
+              if (!issue) return null;
+              const sc = getStatusConfig(issue.status);
+              const pc = getPriorityConfig(issue.priority);
 
               return (
                 <motion.div
@@ -720,386 +316,288 @@ const MyIssuesPage = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3, delay: index * 0.1 }}
-                  className={`relative hover:-translate-y-2 duration-300 shadow-2xl rounded-lg ${issue.isBoosted ? 'ring-2 ring-yellow-400 ring-offset-2' : ''}`}
+                  transition={{ duration: 0.3, delay: index * 0.04 }}
+                  className={`relative hover:-translate-y-1 duration-300
+                    ${issue.isBoosted
+                      ? 'ring-2 ring-yellow-400 ring-offset-2 dark:ring-offset-gray-900 rounded-2xl'
+                      : ''}`}
                 >
-                  {/* Boosted Badge */}
+                  {/* Boosted badge — floats above card like AllIssue */}
                   {issue.isBoosted && (
-                    <div className="absolute -top-3 left-4 z-10">
-                      <div className="bg-linear-to-r from-yellow-400 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1 shadow-lg">
-                        <HiOutlineLightningBolt className="w-3 h-3" />
-                        Boosted
+                    <div className="absolute -top-3 left-3 z-10">
+                      <div className="bg-linear-to-r from-yellow-400 to-orange-500 text-white text-xs font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-lg">
+                        <HiOutlineLightningBolt className="w-3 h-3" /> Boosted
                       </div>
                     </div>
                   )}
 
-                  {/* Issue Image */}
-                  <div className="relative h-48 overflow-hidden rounded-lg">
-                    <img
-                      src={getIssueImage(issue)}
-                      alt={issue.title || 'Issue image'}
-                      className="w-full h-full"
-                    />
-                    <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent"></div>
+                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 h-full border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col">
 
-                    {/* Status Badge */}
-                    <div className={`absolute top-4 right-4 ${statusConfig.color} text-white px-4 py-1.5 rounded-full text-sm font-semibold flex items-center space-x-2 shadow-lg`}>
-                      {statusConfig.icon}
-                      <span>{statusConfig.text}</span>
-                    </div>
+                    {/* ── Image ── */}
+                    <div className="h-40 sm:h-44 relative overflow-hidden shrink-0">
+                      <img
+                        src={getIssueImage(issue)}
+                        alt={issue.title}
+                        className="w-full h-full object-cover"
+                      />
+                      {/* dark overlay */}
+                      <div className="absolute inset-0 bg-linear-to-t from-black/50 via-transparent to-transparent" />
 
-                    {/* Priority Badge */}
-                    <div className={`absolute top-4 left-4 ${priorityConfig.color} text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center space-x-1 shadow-lg`}>
-                      {priorityConfig.icon}
-                      <span>{priorityConfig.text}</span>
-                    </div>
-
-                    {/* Category Badge */}
-                    <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded-lg flex items-center">
-                      <span className="text-lg mr-2">{getCategoryIcon(issue.category)}</span>
-                      <span className="text-sm font-medium text-gray-800">
-                        {issue.category || 'Uncategorized'}
-                      </span>
-                    </div>
-
-                    {/* Image Count */}
-                    {issue.images && issue.images.length > 0 && (
-                      <div className="absolute bottom-4 right-4 bg-black/50 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-xs font-medium flex items-center space-x-1">
-                        <HiOutlinePhotograph className="w-3 h-3" />
-                        <span>{issue.images.length}</span>
+                      {/* Status — top-right */}
+                      <div className="absolute top-3 right-3">
+                        <span className={`bg-linear-to-r ${sc.gradient} text-white px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1 shadow-lg`}>
+                          {sc.icon} {sc.text}
+                        </span>
                       </div>
-                    )}
-                  </div>
 
-                  {/* Issue Content */}
-                  <div className="p-5">
-                    {/* Title & Category */}
-                    <div className="mb-3">
-                      <div className="flex items-start justify-between">
-                        <h3 className="text-lg font-bold text-gray-900 line-clamp-1 group-hover:text-blue-600 transition-colors">
+                      {/* Priority — top-left */}
+                      <div className="absolute top-3 left-3">
+                        <span className={`bg-linear-to-r ${pc.gradient} text-white px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg`}>
+                          {pc.icon} {pc.label}
+                        </span>
+                      </div>
+
+                      {/* Category chip — bottom-left */}
+                      <div className="absolute bottom-3 left-3 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm px-2 py-0.5 rounded-lg flex items-center gap-1">
+                        <span className="text-sm">{getCategoryIcon(issue.category)}</span>
+                        <span className="text-xs font-medium text-gray-800 dark:text-gray-200">{issue.category || 'Other'}</span>
+                      </div>
+
+                      {/* Image count — bottom-right */}
+                      {issue.images?.length > 0 && (
+                        <div className="absolute bottom-3 right-3 bg-black/50 backdrop-blur-sm text-white px-2 py-1 rounded-full text-xs flex items-center gap-1">
+                          <HiOutlinePhotograph className="w-3 h-3" /> {issue.images.length}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* ── Body ── */}
+                    <div className="p-4 flex flex-col flex-1">
+
+                      {/* Title + date */}
+                      <div className="flex justify-between items-start gap-2 mb-2">
+                        <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white line-clamp-1 flex-1">
                           {issue.title || 'Untitled Issue'}
                         </h3>
-                      </div>
-                    </div>
-
-                    {/* Description */}
-                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                      {issue.description.slice(0, 47) || 'No description provided.'}
-                    </p>
-
-                    {/* Meta Info */}
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-center text-gray-700 text-sm">
-                        <HiOutlineLocationMarker className="w-4 h-4 mr-2 text-gray-500" />
-                        <span className="truncate">{issue.location || 'Location not specified'}</span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">
+                          {issue.createdAt
+                            ? new Date(issue.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                            : '—'}
+                        </span>
                       </div>
 
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center text-gray-700 text-sm">
-                          <HiOutlineCalendar className="w-4 h-4 mr-2 text-gray-500" />
-                          <span>
-                            {issue.createdAt ? new Date(issue.createdAt).toLocaleDateString() : 'Date unknown'}
-                          </span>
+                      {/* Description */}
+                      <p className="text-gray-500 dark:text-gray-400 text-xs line-clamp-2 mb-3 flex-1">
+                        {issue.description?.slice(0, 80) || 'No description.'}...
+                      </p>
+
+                      {/* Location */}
+                      <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 text-xs mb-2">
+                        <HiOutlineLocationMarker className="w-3.5 h-3.5 shrink-0" />
+                        <span className="line-clamp-1">{issue.location || 'Not specified'}</span>
+                      </div>
+
+                      {/* Reporter */}
+                      <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 text-xs mb-4">
+                        <HiOutlineUser className="w-3.5 h-3.5 shrink-0" />
+                        <span className="line-clamp-1">{issue.reportedByName || user?.displayName || 'You'}</span>
+                      </div>
+
+                      {/* ── Footer ── */}
+                      <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700 gap-2 mt-auto">
+
+                        {/* Left: upvotes + edit/delete (pending only) */}
+                        <div className="flex items-center gap-1.5">
+                          {/* Upvote count (read-only display) */}
+                          <div className="px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                            <HiOutlineThumbUp className="w-3.5 h-3.5" />
+                            {issue.upVotes || 0}
+                          </div>
+
+                          {/* Edit / Delete — only for Pending */}
+                          {issue.status === 'Pending' && (
+                            <>
+                              <button
+                                onClick={() => handleEdit(issue)}
+                                title="Edit"
+                                className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors"
+                              >
+                                <HiOutlinePencilAlt className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(issue._id)}
+                                title="Delete"
+                                className="p-1.5 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
+                              >
+                                <HiOutlineTrash className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
                         </div>
 
-                        <div className="flex items-center text-blue-600 text-sm font-medium">
-                          <HiOutlineBookmark className="w-4 h-4 mr-1" />
-                          <span>{issue.upVotes || 0} votes</span>
-                        </div>
+                        {/* View Details — matches AllIssue exactly */}
+                        <button
+                          onClick={() => navigate(`/issueDetailsPage/${issue._id}`)}
+                          className="inline-flex items-center px-4 py-2 bg-linear-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 group/btn shadow-md hover:shadow-lg text-xs font-semibold"
+                        >
+                          View
+                          <svg className="w-4 h-4 ml-2 group-hover/btn:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                          </svg>
+                        </button>
                       </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                      <div className="flex items-center space-x-2">
-                        {/* Edit Button (only for pending issues) */}
-                        {issue.status === 'Pending' && (
-                          <button
-                            onClick={() => handleEdit(issue)}
-                            className="p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors duration-300 group/edit disabled:opacity-50 disabled:cursor-not-allowed"
-                            title={singUser?.isBlocked ? "Account Blocked" : "Edit Issue"}
-                          >
-                            <HiOutlinePencilAlt className="w-5 h-5 group-hover/edit:scale-110 transition-transform" />
-                          </button>
-                        )}
-
-                        {/* Delete Button */}
-                        {issue.status === 'Pending' && (
-                          <button
-                            onClick={() => handleDelete(issue._id)}
-                            className="p-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition-colors duration-300 group/delete disabled:opacity-50 disabled:cursor-not-allowed"
-                            title={singUser?.isBlocked ? "Account Blocked" : "Delete Issue"}
-                          >
-                            <HiOutlineTrash className="w-5 h-5 group-hover/delete:scale-110 transition-transform" />
-                          </button>
-                        )}
-                      </div>
-
-                      {/* View Details Button */}
-                      <button
-                        onClick={() => navigate(`/issueDetailsPage/${issue._id}`)}
-                        className="px-4 py-2 bg-linear-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg flex items-center space-x-2"
-                      >
-                        <HiOutlineEye className="w-4 h-4" />
-                        <span className="font-medium">View Details</span>
-                      </button>
                     </div>
                   </div>
                 </motion.div>
               );
-            })}
+            }) : (
+              /* ── Empty State ── */
+              <div className="col-span-full text-center py-16">
+                <div className="w-20 h-20 mx-auto mb-5 bg-linear-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border border-blue-200 dark:border-blue-800 rounded-3xl flex items-center justify-center">
+                  <HiOutlineDocumentText className="w-10 h-10 text-blue-500" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-700 dark:text-gray-200 mb-2">
+                  {issues.length === 0 ? 'No Issues Yet' : 'No Matching Issues'}
+                </h3>
+                <p className="text-gray-500 dark:text-gray-400 text-sm mb-6 max-w-sm mx-auto">
+                  {issues.length === 0
+                    ? 'Start by reporting your first community issue.'
+                    : 'Try adjusting your search or filters.'}
+                </p>
+                {issues.length === 0 && (
+                  <button
+                    onClick={() => navigate('/dashboard/reportIssue')}
+                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-linear-to-r from-blue-600 to-purple-600 text-white text-sm font-bold rounded-xl shadow-lg hover:scale-[1.02] transition-all"
+                  >
+                    <Zap className="w-4 h-4" /> Report First Issue
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </AnimatePresence>
 
-        {/* Empty State */}
-        {filteredIssues.length === 0 && (
-          <div className="text-center py-12">
-            <div className="w-24 h-24 mx-auto mb-6 bg-linear-to-r from-blue-100 to-purple-100 rounded-3xl flex items-center justify-center">
-              <HiOutlineDocumentText className="w-12 h-12 text-blue-500" />
-            </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              {issues.length === 0 ? 'No Issues Reported' : 'No Issues Match Filters'}
-            </h3>
-            <p className="text-gray-600 mb-6 max-w-md mx-auto">
-              {issues.length === 0
-                ? 'Start by reporting your first community issue to help improve your neighborhood.'
-                : 'Try adjusting your filters to see more results.'}
-            </p>
-            {issues.length === 0 && (
-              <button
-                onClick={() => navigate('/dashboard/reportIssue')}
-                className="px-6 py-3 bg-linear-to-r from-blue-600 to-purple-600 text-white rounded-2xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl font-medium"
-              >
-                Report Your First Issue
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Pagination - Only show if there are multiple pages */}
+        {/* ── Pagination ── */}
         {filteredIssues.length > 0 && totalPages > 1 && (
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-sm text-gray-600 hidden md:block">
-              Page <span className="font-semibold">{currentPage}</span> of{' '}
-              <span className="font-semibold">{totalPages}</span>
-            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400 hidden sm:block">
+              Page <span className="font-bold text-gray-900 dark:text-white">{currentPage}</span> of{' '}
+              <span className="font-bold text-gray-900 dark:text-white">{totalPages}</span>
+            </p>
+            <div className="flex items-center gap-1">
+              {[
+                { icon: <HiOutlineChevronDoubleLeft className="w-4 h-4" />, action: () => goToPage(1),              disabled: currentPage === 1          },
+                { icon: <HiOutlineChevronLeft className="w-4 h-4" />,       action: () => goToPage(currentPage - 1), disabled: currentPage === 1          },
+              ].map((btn, i) => (
+                <button key={i} onClick={btn.action} disabled={btn.disabled}
+                  className={`p-2 rounded-lg transition-colors ${btn.disabled ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400'}`}>
+                  {btn.icon}
+                </button>
+              ))}
 
-            <div className="flex items-center space-x-2">
-              {/* First Page Button */}
-              <button
-                onClick={goToFirstPage}
-                disabled={currentPage === 1}
-                className={`p-2 rounded-lg ${currentPage === 1
-                  ? 'text-gray-400 cursor-not-allowed'
-                  : 'text-gray-700 hover:bg-gray-100 hover:text-blue-600'
-                  } transition-colors duration-200`}
-                title="First Page"
-              >
-                <HiOutlineChevronDoubleLeft className="w-5 h-5" />
-              </button>
+              {generatePageNumbers().map((p, i) => p === '...'
+                ? <span key={`e${i}`} className="px-2 text-gray-400 dark:text-gray-500 text-sm">…</span>
+                : (
+                  <button key={p} onClick={() => goToPage(p)}
+                    className={`w-9 h-9 rounded-lg text-sm font-medium transition-all duration-200 ${currentPage === p
+                      ? 'bg-linear-to-r from-blue-600 to-purple-600 text-white shadow-md'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400'}`}>
+                    {p}
+                  </button>
+                )
+              )}
 
-              {/* Previous Page Button */}
-              <button
-                onClick={goToPreviousPage}
-                disabled={currentPage === 1}
-                className={`p-2 rounded-lg ${currentPage === 1
-                  ? 'text-gray-400 cursor-not-allowed'
-                  : 'text-gray-700 hover:bg-gray-100 hover:text-blue-600'
-                  } transition-colors duration-200`}
-                title="Previous Page"
-              >
-                <HiOutlineChevronLeft className="w-5 h-5" />
-              </button>
-
-              {/* Page Numbers */}
-              <div className="flex items-center space-x-1">
-                {generatePageNumbers().map((pageNum, index) => (
-                  pageNum === '...' ? (
-                    <span key={`ellipsis-${index}`} className="px-3 py-1 text-gray-400">
-                      ...
-                    </span>
-                  ) : (
-                    <button
-                      key={pageNum}
-                      onClick={() => goToPage(pageNum)}
-                      className={`px-3 py-1.5 min-w-10 rounded-lg font-medium transition-all duration-200 ${currentPage === pageNum
-                        ? 'bg-linear-to-r from-blue-600 to-purple-600 text-white shadow-md'
-                        : 'text-gray-700 hover:bg-gray-100 hover:text-blue-600'
-                        }`}
-                    >
-                      {pageNum}
-                    </button>
-                  )
-                ))}
-              </div>
-
-              {/* Next Page Button */}
-              <button
-                onClick={goToNextPage}
-                disabled={currentPage === totalPages}
-                className={`p-2 rounded-lg ${currentPage === totalPages
-                  ? 'text-gray-400 cursor-not-allowed'
-                  : 'text-gray-700 hover:bg-gray-100 hover:text-blue-600'
-                  } transition-colors duration-200`}
-                title="Next Page"
-              >
-                <HiOutlineChevronRight className="w-5 h-5" />
-              </button>
-
-              {/* Last Page Button */}
-              <button
-                onClick={goToLastPage}
-                disabled={currentPage === totalPages}
-                className={`p-2 rounded-lg ${currentPage === totalPages
-                  ? 'text-gray-400 cursor-not-allowed'
-                  : 'text-gray-700 hover:bg-gray-100 hover:text-blue-600'
-                  } transition-colors duration-200`}
-                title="Last Page"
-              >
-                <HiOutlineChevronDoubleRight className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Items per page selector for mobile */}
-            <div className="sm:hidden flex items-center gap-2 w-full justify-center">
-              <span className="text-sm text-gray-600">Items per page:</span>
-              <select
-                value={itemsPerPage}
-                onChange={(e) => handleItemsPerPageChange(e.target.value)}
-                className="px-3 py-1.5 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-300 bg-white text-sm"
-              >
-                <option value="6">6</option>
-                <option value="9">9</option>
-                <option value="12">12</option>
-                <option value="15">15</option>
-              </select>
+              {[
+                { icon: <HiOutlineChevronRight className="w-4 h-4" />,       action: () => goToPage(currentPage + 1), disabled: currentPage === totalPages },
+                { icon: <HiOutlineChevronDoubleRight className="w-4 h-4" />, action: () => goToPage(totalPages),      disabled: currentPage === totalPages },
+              ].map((btn, i) => (
+                <button key={i} onClick={btn.action} disabled={btn.disabled}
+                  className={`p-2 rounded-lg transition-colors ${btn.disabled ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400'}`}>
+                  {btn.icon}
+                </button>
+              ))}
             </div>
           </div>
         )}
       </div>
 
-      {/* Edit Modal */}
-      {showEditModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-          >
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Edit Issue</h2>
-                <button
-                  onClick={() => setShowEditModal(false)}
-                  disabled={updateIssueMutation.isLoading}
-                  className="p-2 rounded-xl hover:bg-gray-100 transition-colors disabled:opacity-50"
-                >
-                  <HiOutlineXCircle className="w-6 h-6 text-gray-500" />
-                </button>
-              </div>
-
-              <form onSubmit={handleSubmit}>
-                <div className="space-y-4">
+      {/* ══ Edit Modal ══════════════════════════════════════════════════ */}
+      <AnimatePresence>
+        {showEditModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.2 }}
+              className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+            >
+              <div className="h-1.5 w-full bg-linear-to-r from-blue-500 via-purple-500 to-fuchsia-500 rounded-t-3xl" />
+              <div className="p-6 sm:p-8">
+                <div className="flex items-center justify-between mb-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Title</label>
-                    <input
-                      type="text"
-                      name="title"
-                      value={formData.title}
-                      onChange={handleChange}
-                      disabled={updateIssueMutation.isLoading}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-300 disabled:opacity-50"
-                      required
-                    />
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Edit Issue</h2>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Only pending issues can be modified</p>
                   </div>
+                  <button
+                    onClick={() => setShowEditModal(false)}
+                    className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors"
+                  >
+                    <HiOutlineXCircle className="w-5 h-5" />
+                  </button>
+                </div>
 
+                <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                    <textarea
-                      name="description"
-                      value={formData.description}
-                      onChange={handleChange}
-                      rows="4"
-                      disabled={updateIssueMutation.isLoading}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-300 disabled:opacity-50"
-                      required
-                    />
+                    <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1.5">Title</label>
+                    <input type="text" name="title" value={formData.title}
+                      onChange={(e) => setFormData({ ...formData, [e.target.name]: e.target.value })}
+                      disabled={updateIssueMutation.isLoading} className={inputCls} required />
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1.5">Description</label>
+                    <textarea name="description" value={formData.description} rows={4}
+                      onChange={(e) => setFormData({ ...formData, [e.target.name]: e.target.value })}
+                      disabled={updateIssueMutation.isLoading} className={inputCls} required />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                      <select
-                        name="category"
-                        value={formData.category}
-                        onChange={handleChange}
-                        disabled={updateIssueMutation.isLoading}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-300 disabled:opacity-50"
-                      >
+                      <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1.5">Category</label>
+                      <select name="category" value={formData.category}
+                        onChange={(e) => setFormData({ ...formData, [e.target.name]: e.target.value })}
+                        disabled={updateIssueMutation.isLoading} className={`${inputCls} appearance-none`}>
                         <option value="">Select Category</option>
-                        <option value="Road_Damage">Road Damage (Potholes)</option>
-                        <option value="Streetlight">Broken Streetlight</option>
-                        <option value="Water">Water Leakage</option>
-                        <option value="Garbage">Garbage Overflow</option>
-                        <option value="Footpath">Damaged Footpath</option>
-                        <option value="Drainage">Blocked Drainage</option>
-                        <option value="Traffic">Traffic Signal Issue</option>
-                        <option value="Parks">Park Maintenance</option>
-                        <option value="Public_Toilet">Public Toilet Issue</option>
-                        <option value="Noise">Noise Pollution</option>
-                        <option value="Electricity">Electricity Issue</option>
-                        <option value="Water_Supply">Water Supply Issue</option>
-                        <option value="Sanitation">Sanitation Issue</option>
-                        <option value="Infrastructure">Infrastructure Issue</option>
-                        <option value="Other">Other Issue</option>
+                        {['Road_Damage','Streetlight','Garbage','Footpath','Drainage','Traffic','Parks','Public_Toilet','Noise','Electricity','Water_Supply','Sanitation','Infrastructure','Other'].map(c => (
+                          <option key={c} value={c}>{c.replace('_', ' ')}</option>
+                        ))}
                       </select>
                     </div>
                   </div>
-
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
-                    <input
-                      type="text"
-                      name="location"
-                      value={formData.location}
-                      onChange={handleChange}
-                      disabled={updateIssueMutation.isLoading}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-300 disabled:opacity-50"
-                      required
-                    />
+                    <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1.5">Location</label>
+                    <input type="text" name="location" value={formData.location}
+                      onChange={(e) => setFormData({ ...formData, [e.target.name]: e.target.value })}
+                      disabled={updateIssueMutation.isLoading} className={inputCls} required />
                   </div>
-                </div>
-
-                <div className="flex items-center justify-end space-x-3 mt-8 pt-6 border-t border-gray-200">
-                  <button
-                    type="button"
-                    onClick={() => setShowEditModal(false)}
-                    disabled={updateIssueMutation.isLoading}
-                    className="px-6 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors duration-300 disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={updateIssueMutation.isLoading}
-                    className="px-6 py-3 bg-linear-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg font-medium flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {updateIssueMutation.isLoading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
-                        <span>Updating...</span>
-                      </>
-                    ) : (
-                      <span>Update Issue</span>
-                    )}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </motion.div>
-        </div>
-      )}
+                  <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <button type="button" onClick={() => setShowEditModal(false)} disabled={updateIssueMutation.isLoading}
+                      className="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50">
+                      Cancel
+                    </button>
+                    <button type="submit" disabled={updateIssueMutation.isLoading}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-linear-to-r from-blue-600 to-purple-600 text-white text-sm font-bold rounded-xl shadow-lg hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                      {updateIssueMutation.isLoading
+                        ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Updating…</>
+                        : 'Update Issue'
+                      }
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
